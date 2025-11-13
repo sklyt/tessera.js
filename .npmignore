@@ -1,0 +1,15 @@
+# ignore everything by default
+*
+
+# allow dist output
+!dist/
+!dist/**
+
+# allow package metadata files
+!package.json
+!README.md
+!LICENSE
+!CHANGELOG.md
+
+
+!dist/**/*.d.ts

@@ -6,7 +6,7 @@ JavaScript graphics library that exposes a shared buffer between JavaScript and 
 ## Installation 
 
 ```bash
-npm i renderer.js 
+npm i @sk/renderer.js
 ```
 
 ## Core Concepts
@@ -19,7 +19,7 @@ Every abstraction in this library builds from these two primitives.
 ## Quick Start
 
 ```js
-import { loadRenderer, SharedBuffer, Texture } from "renderer.js";
+import { loadRenderer, SharedBuffer, Texture } from "@sk/renderer.js";
 
 const {Renderer, FULLSCREEN, RESIZABLE} = loadRenderer();
 
@@ -107,7 +107,7 @@ renderer.onRender(() => {
 Utility class for pixel-by-pixel manipulation, like the web canvas but in Node.
 
 ```js
-import { loadRenderer, PixelCanvas } from "renderer.js";
+import { loadRenderer, PixelCanvas } from "@sk/renderer.js";
 
 const {Renderer} = loadRenderer();
 const renderer = new Renderer();
@@ -173,7 +173,7 @@ renderer.onRender(() => {
 ### Input Handling
 
 ```js
-import { loadRenderer, InputMap } from "renderer.js";
+import { loadRenderer, InputMap } from "@sk/renderer.js";
 
 const {Renderer} = loadRenderer();
 const renderer = new Renderer();

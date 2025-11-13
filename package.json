@@ -19,11 +19,16 @@
     "install": "node-gyp-build",
     "build:js": "rollup -c && node scripts/copy-prebuilds.js",
     "build:types": "tsc -p tsconfig.types.json",
+    "build": "npm run build:js && npm run build:types",
     "prepublishOnly": "npm run build"
   },
-  "keywords": [],
-  "author": "",
+  "homepage": "https://github.com/sklyt/render/tree/main",
+  "keywords": ["raylib", "raylib.js", "node.js", "renderer.js"],
+  "author": "sk",
   "license": "ISC",
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "node-gyp-build": "^4.8.4"
   },

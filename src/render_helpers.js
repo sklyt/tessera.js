@@ -7,10 +7,10 @@ export class SharedBuffer {
      * @param {Renderer} renderer 
      * @param {Number} size - buffer size
      */
-    constructor(renderer, size) {
+    constructor(renderer, width, height) {
         this.renderer = renderer;
-        this.bufferId = renderer.createSharedBuffer(size);
-        this.size = size;
+        this.size = width * height * 4;
+        this.bufferId = renderer.createSharedBuffer(this.size, width, height);
         this.dirty = false;
     }
 

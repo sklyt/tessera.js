@@ -206,9 +206,12 @@ export class Renderer {
     /**
      * Create a shared buffer for CPU->GPU uploads.
      * @param {number} size
+     * @param {number} width - for dirty region tracking and update
+     * @param {number} height - for dirty region tracking and update
+     *
      * @returns {number} bufferId
      */
-    createSharedBuffer(size) { return 0; }
+    createSharedBuffer(size, width, height) { return 0; }
 
     /**
      * Mark a shared buffer as dirty.
@@ -216,6 +219,18 @@ export class Renderer {
      * @returns {void}
      */
     markBufferDirty(bufferId) { }
+
+
+    /**
+     * 
+     * @param {number} bufferId 
+     *
+     * @param {number} x 
+     * @param {number} y 
+     * @param {number} width  
+     * @param {number} height
+     * */ 
+    markBufferRegionDirty(bufferId, x, y,width, height){}
 
     /**
      * Is the shared buffer dirty?
@@ -235,9 +250,13 @@ export class Renderer {
      * Update buffer bytes from a TypedArray (Uint8Array)
      * @param {number} bufferId
      * @param {Uint8Array} data
+     * @param {number} x
+     * @param {number} y
+     * @param {number} width
+     * @param {number} height
      * @returns {void}
      */
-    updateBufferData(bufferId, data) { }
+    updateBufferData(bufferId, data, x =0, y=0, width=0, height = 0) { }
 
     /**
      * Upload an existing shared buffer to a GPU texture.

@@ -119,289 +119,122 @@ export class Texture {
 }
 
 
-export class utils {
-
-    /**
-     * 
-     * @param {Renderer} renderer 
-     */
-    constructor(renderer) {
-        this.renderer = renderer;
-    }
-
-    /**
-     * 
-     * @param {number} size 
-     * @returns {SharedBuffer}
-     */
-    createSharedBuffer(size) {
-        const buffer = new SharedBuffer(this.renderer, size);
-        return buffer;
-    }
-
-    /**
-     * 
-     * @param {number} width 
-     * @param {number} height 
-     * @param {"perlin" | "simplex" | "value"} type 
-     * @param {{scale?: number, octaves?: number, persistence?: number, lacunarity?: number}} options 
-     * @returns {{buffer: SharedBuffer, width: number,height: number, type:"perlin" | "simplex" | "value" }};
-     */
-    generateProceduralNoise(width, height, type = 'perlin', options = {}) {
-        const bufferSize = width * height * 4;
-        const buffer = this.createSharedBuffer(bufferSize);
-
-
-        const data = buffer.getData()
-        switch (type) {
-            case 'perlin':
-                this.#generatePerlinNoise(data, width, height, options);
-                break;
-            case 'simplex':
-                this.#generateSimplexNoise(data, width, height, options);
-                break;
-            case 'value':
-                this.#generateValueNoise(data, width, height, options);
-                break;
-            default:
-                this.#generateRandomNoise(data, width, height);
-        }
-
-        buffer.updateData(data)
-        return {
-            buffer,
-            width,
-            height,
-            type
-        };
-    }
-
-    #generatePerlinNoise(data, width, height, options) {
-        const scale = options.scale || 0.1;
-        const octaves = options.octaves || 4;
-        const persistence = options.persistence || 0.5;
-        const lacunarity = options.lacunarity || 2.0;
-
-        // Simple Perlin-like noise implementation
-        for (let y = 0; y < height; y++) {
-            for (let x = 0; x < width; x++) {
-                let amplitude = 1;
-                let frequency = 1;
-                let noiseValue = 0;
-
-                for (let o = 0; o < octaves; o++) {
-                    const sampleX = x * scale * frequency;
-                    const sampleY = y * scale * frequency;
-
-                    // Simple pseudo-random function
-                    const value = Math.sin(sampleX * 12.9898 + sampleY * 78.233) * 43758.5453;
-                    const perl = value - Math.floor(value);
-
-                    noiseValue += perl * amplitude;
-                    amplitude *= persistence;
-                    frequency *= lacunarity;
-                }
-
-                const idx = (y * width + x) * 4;
-                const value = Math.floor(noiseValue * 127 + 128);
-                data[idx] = value;     // R
-                data[idx + 1] = value; // G
-                data[idx + 2] = value; // B
-                data[idx + 3] = 255;   // A
-            }
-        }
-    }
-
-    #generateSimplexNoise(data, width, height, options) {
-        // Simplified Simplex-like noise
-        const scale = options.scale || 0.01;
-
-        for (let y = 0; y < height; y++) {
-            for (let x = 0; x < width; x++) {
-                const idx = (y * width + x) * 4;
-
-                // Simple gradient noise approximation
-                const value = Math.sin(x * scale) * Math.cos(y * scale);
-                const normalized = (value + 1) * 0.5 * 255;
-
-                data[idx] = normalized;     // R
-                data[idx + 1] = normalized; // G  
-                data[idx + 2] = normalized; // B
-                data[idx + 3] = 255;       // A
-            }
-        }
-    }
-
-    #generateValueNoise(data, width, height, options) {
-        // Simple value noise
-        const scale = options.scale || 0.05;
-
-        for (let y = 0; y < height; y++) {
-            for (let x = 0; x < width; x++) {
-                const idx = (y * width + x) * 4;
-                const value = Math.sin(x * scale * y * scale) * 127 + 128;
-
-                data[idx] = value;     // R
-                data[idx + 1] = value; // G
-                data[idx + 2] = value; // B
-                data[idx + 3] = 255;   // A
-            }
-        }
-    }
-
-    #generateRandomNoise(data, width, height) {
-        for (let i = 0; i < data.length; i += 4) {
-            const value = Math.floor(Math.random() * 256);
-            data[i] = value;     // R
-            data[i + 1] = value; // G
-            data[i + 2] = value; // B
-            data[i + 3] = 255;   // A
-        }
-    }
-
-
-    /**
-     * 
-     * @param {number} width 
-     * @param {number} height 
-     * @returns {{buffer: SharedBuffer, width: number, height:number}}
-     */
-    static generateRandomNoise(width, height) {
-        const bufferSize = width * height * 4; // RGBA
-        const buffer = this.createSharedBuffer(bufferSize);
-        const noiseData = new Uint8Array(bufferSize);
-
-        for (let i = 0; i < bufferSize; i++) {
-            noiseData[i] = Math.floor(Math.random() * 256);
-        }
-
-        // set alpha channel to 255 (fully opaque)
-        for (let i = 3; i < bufferSize; i += 4) {
-            noiseData[i] = 255;
-        }
-
-        buffer.updateData(noiseData);
-        return { buffer, width, height };
-    }
-}
-
-
 /**
  * Like Web Canvas?  a way to put pixels in a buffer and screen
  */
-export class PixelCanvas {
-    /**
-     * 
-     * @param {Renderer} renderer 
-     * @param {number} width 
-     * @param {number} height 
-     */
-    constructor(renderer, width, height) {
-        this.renderer = renderer;
-        this.width = width;
-        this.height = height;
+// export class PixelCanvas {
+//     /**
+//      * 
+//      * @param {Renderer} renderer 
+//      * @param {number} width 
+//      * @param {number} height 
+//      */
+//     constructor(renderer, width, height) {
+//         this.renderer = renderer;
+//         this.width = width;
+//         this.height = height;
 
-        this.bufferSize = width * height * 4;
-        this.sharedBuffer = new SharedBuffer(renderer, this.bufferSize);
-        this.texture = new Texture(renderer, this.sharedBuffer.bufferId, width, height);
-
-
-        this.pixelData = this.sharedBuffer.getData();
-
-        this.clear();
-    }
-
-    clear() {
-        for (let i = 0; i < this.pixelData.length; i += 4) {
-            this.pixelData[i] = 0;     // R
-            this.pixelData[i + 1] = 0; // G
-            this.pixelData[i + 2] = 0; // B  
-            this.pixelData[i + 3] = 0; // A (0 = transparent)
-        }
-        this.sharedBuffer.markDirty();
-    }
-
-    setPixel(x, y, r, g, b, a = 255) {
-        if (x < 0 || x >= this.width || y < 0 || y >= this.height) {
-            return;
-        }
-
-        const index = (y * this.width + x) * 4;
-        this.pixelData[index] = r;
-        this.pixelData[index + 1] = g;
-        this.pixelData[index + 2] = b;
-        this.pixelData[index + 3] = a;
-
-        this.sharedBuffer.markDirty();
-    }
-
-    getPixel(x, y) {
-        if (x < 0 || x >= this.width || y < 0 || y >= this.height) {
-            return null;
-        }
-
-        const index = (y * this.width + x) * 4;
-        return {
-            r: this.pixelData[index],
-            g: this.pixelData[index + 1],
-            b: this.pixelData[index + 2],
-            a: this.pixelData[index + 3]
-        };
-    }
-
-    update() {
-        if (!this.sharedBuffer.isDirty()) {
-            // console.log("buffer not dirty")
-            return;
-        }
-        this.sharedBuffer.updateData(this.pixelData)
-        this.texture.update();
-    }
-
-    draw(x, y) {
-        this.texture.draw(x, y);
-    }
-
-    // color utils
-    setPixelColor(x, y, color) {
-        this.setPixel(x, y, color.r, color.g, color.b, color.a);
-    }
+//         this.bufferSize = width * height * 4;
+//         this.sharedBuffer = new SharedBuffer(renderer, this.bufferSize);
+//         this.texture = new Texture(renderer, this.sharedBuffer.bufferId, width, height);
 
 
-    fillColor(r, g, b, a = 255) {
-        for (let i = 0; i < this.pixelData.length; i += 4) {
-            this.pixelData[i] = r;
-            this.pixelData[i + 1] = g;
-            this.pixelData[i + 2] = b;
-            this.pixelData[i + 3] = a;
-        }
+//         this.pixelData = this.sharedBuffer.getData();
 
-        this.sharedBuffer.markDirty();
-    }
+//         this.clear();
+//     }
+
+//     clear() {
+//         for (let i = 0; i < this.pixelData.length; i += 4) {
+//             this.pixelData[i] = 0;     // R
+//             this.pixelData[i + 1] = 0; // G
+//             this.pixelData[i + 2] = 0; // B  
+//             this.pixelData[i + 3] = 0; // A (0 = transparent)
+//         }
+//         this.sharedBuffer.markDirty();
+//     }
+
+//     setPixel(x, y, r, g, b, a = 255) {
+//         if (x < 0 || x >= this.width || y < 0 || y >= this.height) {
+//             return;
+//         }
+
+//         const index = (y * this.width + x) * 4;
+//         this.pixelData[index] = r;
+//         this.pixelData[index + 1] = g;
+//         this.pixelData[index + 2] = b;
+//         this.pixelData[index + 3] = a;
+
+//         this.sharedBuffer.markDirty();
+//     }
+
+//     getPixel(x, y) {
+//         if (x < 0 || x >= this.width || y < 0 || y >= this.height) {
+//             return null;
+//         }
+
+//         const index = (y * this.width + x) * 4;
+//         return {
+//             r: this.pixelData[index],
+//             g: this.pixelData[index + 1],
+//             b: this.pixelData[index + 2],
+//             a: this.pixelData[index + 3]
+//         };
+//     }
+
+//     update() {
+//         if (!this.sharedBuffer.isDirty()) {
+//             // console.log("buffer not dirty")
+//             return;
+//         }
+//         this.sharedBuffer.updateData(this.pixelData)
+//         this.texture.update();
+//     }
+
+//     draw(x, y) {
+//         this.texture.draw(x, y);
+//     }
+
+//     // color utils
+//     setPixelColor(x, y, color) {
+//         this.setPixel(x, y, color.r, color.g, color.b, color.a);
+//     }
 
 
-    fillGradient(color1, color2, direction = 'horizontal') {
-        for (let y = 0; y < this.height; y++) {
-            for (let x = 0; x < this.width; x++) {
-                let t;
-                if (direction === 'horizontal') {
-                    t = x / this.width;
-                } else {
-                    t = y / this.height;
-                }
+//     fillColor(r, g, b, a = 255) {
+//         for (let i = 0; i < this.pixelData.length; i += 4) {
+//             this.pixelData[i] = r;
+//             this.pixelData[i + 1] = g;
+//             this.pixelData[i + 2] = b;
+//             this.pixelData[i + 3] = a;
+//         }
 
-                const r = Math.floor(color1.r + (color2.r - color1.r) * t);
-                const g = Math.floor(color1.g + (color2.g - color1.g) * t);
-                const b = Math.floor(color1.b + (color2.b - color1.b) * t);
-                const a = Math.floor(color1.a + (color2.a - color1.a) * t);
+//         this.sharedBuffer.markDirty();
+//     }
 
-                this.setPixel(x, y, r, g, b, a);
-            }
-        }
-        this.sharedBuffer.markDirty();
-    }
 
-}
+//     fillGradient(color1, color2, direction = 'horizontal') {
+//         for (let y = 0; y < this.height; y++) {
+//             for (let x = 0; x < this.width; x++) {
+//                 let t;
+//                 if (direction === 'horizontal') {
+//                     t = x / this.width;
+//                 } else {
+//                     t = y / this.height;
+//                 }
+
+//                 const r = Math.floor(color1.r + (color2.r - color1.r) * t);
+//                 const g = Math.floor(color1.g + (color2.g - color1.g) * t);
+//                 const b = Math.floor(color1.b + (color2.b - color1.b) * t);
+//                 const a = Math.floor(color1.a + (color2.a - color1.a) * t);
+
+//                 this.setPixel(x, y, r, g, b, a);
+//             }
+//         }
+//         this.sharedBuffer.markDirty();
+//     }
+
+// }
 
 
 export class CoordinateSystem {
@@ -586,5 +419,30 @@ export class ColorTheory {
             color,
             this.HSVtoRGB((hsv.h + spread) % 360, hsv.s, hsv.v)
         ];
+    }
+}
+
+
+
+export class PerformanceMonitor {
+    constructor() {
+        this.frameTimes = [];
+        this.bufferUpdateTimes = [];
+    }
+    
+    startFrame() {
+        this.frameStart = performance.now();
+    }
+    
+    endFrame() {
+        const frameTime = performance.now() - this.frameStart;
+        this.frameTimes.push(frameTime);
+        
+        if (this.frameTimes.length > 60) {
+            this.frameTimes.shift();
+        }
+        
+        const avg = this.frameTimes.reduce((a, b) => a + b) / this.frameTimes.length;
+        console.log(`Avg frame time: ${avg.toFixed(2)}ms (${(1000/avg).toFixed(1)} FPS)`);
     }
 }

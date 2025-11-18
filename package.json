@@ -1,6 +1,6 @@
 {
   "name": "rayrenderer.js",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "",
   "type": "module",
   "main": "dist/cjs/index.cjs",
@@ -8,7 +8,8 @@
   "exports": {
     ".": {
       "import": "./dist/esm/index.js",
-      "require": "./dist/cjs/index.cjs"
+      "require": "./dist/cjs/index.cjs",
+      "types": "./dist/types/index.d.ts"
     }
   },
   "types": "dist/types/index.d.ts",
@@ -16,14 +17,18 @@
     "dist/"
   ],
   "scripts": {
-    "install": "node-gyp-build",
     "build:js": "rollup -c && node scripts/copy-prebuilds.js",
     "build:types": "tsc -p tsconfig.types.json",
     "build": "npm run build:js && npm run build:types",
     "prepublishOnly": "npm run build"
   },
   "homepage": "https://github.com/sklyt/render/tree/main",
-  "keywords": ["raylib", "raylib.js", "node.js", "renderer.js"],
+  "keywords": [
+    "raylib",
+    "raylib.js",
+    "node.js",
+    "renderer.js"
+  ],
   "author": "sk",
   "license": "ISC",
   "publishConfig": {

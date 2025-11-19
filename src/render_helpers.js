@@ -1,12 +1,84 @@
 
 
 
+// Helper: extract a rectangular region from a full RGBA buffer
+function extractRegion(data, fullWidth, minX, minY, regionWidth, regionHeight) {
+    const rowBytes = regionWidth * 4;
+    const out = new Uint8ClampedArray(regionWidth * regionHeight * 4);
+    for (let row = 0; row < regionHeight; row++) {
+        const srcStart = ((minY + row) * fullWidth + minX) * 4;
+        const dstStart = row * rowBytes;
+        out.set(data.subarray(srcStart, srcStart + rowBytes), dstStart);
+    }
+    return out;
+}
+
+export class DirtyRegionTracker {
+    constructor(canvas) {
+        this.canvas = canvas;
+        this.reset();
+    }
+
+    reset() {
+        this.minX = Infinity;
+        this.minY = Infinity;
+        this.maxX = -Infinity;
+        this.maxY = -Infinity;
+        this.modified = false;
+    }
+
+    mark(x, y) {
+        x = Math.floor(x);
+        y = Math.floor(y);
+        // clamp and ignore out-of-bounds marks
+        if (x < 0 || y < 0 || x >= this.canvas.width || y >= this.canvas.height) return;
+        if (x < this.minX) this.minX = x;
+        if (y < this.minY) this.minY = y;
+        if (x > this.maxX) this.maxX = x;
+        if (y > this.maxY) this.maxY = y;
+        this.modified = true;
+    }
+
+    // call once after all writes
+    flush() {
+        if (!this.modified) {
+            this.reset();
+            return null;
+        }
+
+        const minX = Math.max(0, Math.floor(this.minX));
+        const minY = Math.max(0, Math.floor(this.minY));
+        const maxX = Math.min(this.canvas.width - 1, Math.floor(this.maxX));
+        const maxY = Math.min(this.canvas.height - 1, Math.floor(this.maxY));
+
+        const regionWidth = maxX - minX + 1;
+        const regionHeight = maxY - minY + 1;
+
+        // extract and send to renderer
+        const regionData = extractRegion(this.canvas.data, this.canvas.width, minX, minY, regionWidth, regionHeight);
+        this.canvas.renderer.updateBufferData(
+            this.canvas.bufferId,
+            regionData,
+            minX, minY,
+            regionWidth, regionHeight
+        );
+        this.canvas.needsUpload = true;
+
+        const result = { minX, minY, regionWidth, regionHeight };
+        this.reset();
+        return result;
+    }
+}
+
+
+
+
 export class SharedBuffer {
-     /**
-     * 
-     * @param {Renderer} renderer 
-     * @param {Number} size - buffer size
-     */
+    /**
+    * 
+    * @param {Renderer} renderer 
+    * @param {Number} size - buffer size
+    */
     constructor(renderer, width, height) {
         this.renderer = renderer;
         this.size = width * height * 4;
@@ -95,7 +167,7 @@ export class Texture {
     }
 
 
-    
+
     /**
      * 
      * @description delete texture
@@ -245,27 +317,27 @@ export class CoordinateSystem {
         this.canvasHeight = canvasHeight;
         this.scale = 1.0;
     }
-    
+
     screenToCanvas(screenX, screenY) {
         return {
             x: Math.floor((screenX - this.canvasX) / this.scale),
             y: Math.floor((screenY - this.canvasY) / this.scale)
         };
     }
-    
+
     canvasToScreen(canvasX, canvasY) {
         return {
             x: Math.floor(canvasX * this.scale + this.canvasX),
             y: Math.floor(canvasY * this.scale + this.canvasY)
         };
     }
-    
+
     isPointInCanvas(screenX, screenY) {
         const canvasPos = this.screenToCanvas(screenX, screenY);
         return canvasPos.x >= 0 && canvasPos.x < this.canvasWidth &&
-               canvasPos.y >= 0 && canvasPos.y < this.canvasHeight;
+            canvasPos.y >= 0 && canvasPos.y < this.canvasHeight;
     }
-    
+
     setScale(newScale) {
         this.scale = Math.max(0.1, Math.min(5.0, newScale));
     }
@@ -279,7 +351,7 @@ export class DrawingTools {
          */
         this.canvas = canvas;
     }
-    
+
     // bresenham's line algorithm
     drawLine(x0, y0, x1, y1, color) {
         const dx = Math.abs(x1 - x0);
@@ -287,12 +359,12 @@ export class DrawingTools {
         const sx = x0 < x1 ? 1 : -1;
         const sy = y0 < y1 ? 1 : -1;
         let err = dx + dy;
-        
+
         while (true) {
             this.canvas.setPixelColor(x0, y0, color);
-            
+
             if (x0 === x1 && y0 === y1) break;
-            
+
             const e2 = 2 * err;
             if (e2 >= dy) {
                 err += dy;
@@ -305,7 +377,7 @@ export class DrawingTools {
         }
         this.canvas.sharedBuffer.markDirty();
     }
-    
+
     // Draw rectangle - two approaches
     drawRectangle(x, y, width, height, color, filled = true) {
         if (filled) {
@@ -323,13 +395,13 @@ export class DrawingTools {
         }
         this.canvas.sharedBuffer.markDirty();
     }
-    
+
     // Circle using midpoint circle algorithm
     drawCircle(centerX, centerY, radius, color, filled = true) {
         let x = radius;
         let y = 0;
         let err = 0;
-        
+
         while (x >= y) {
             if (filled) {
                 this.drawLine(centerX - x, centerY + y, centerX + x, centerY + y, color);
@@ -347,7 +419,7 @@ export class DrawingTools {
                 this.canvas.setPixelColor(centerX + y, centerY - x, color);
                 this.canvas.setPixelColor(centerX + x, centerY - y, color);
             }
-            
+
             y += 1;
             err += 1 + 2 * y;
             if (2 * (err - x) + 1 > 0) {
@@ -368,50 +440,50 @@ export class ColorTheory {
         const max = Math.max(r, g, b);
         const min = Math.min(r, g, b);
         const delta = max - min;
-        
+
         let h = 0, s = 0, v = max;
-        
+
         if (delta !== 0) {
             s = delta / max;
             if (r === max) h = (g - b) / delta;
             else if (g === max) h = 2 + (b - r) / delta;
             else h = 4 + (r - g) / delta;
-            
+
             h *= 60;
             if (h < 0) h += 360;
         }
-        
+
         return { h, s: s * 100, v: v * 100 };
     }
-    
+
     static HSVtoRGB(h, s, v) {
         s /= 100; v /= 100;
         const c = v * s;
         const x = c * (1 - Math.abs((h / 60) % 2 - 1));
         const m = v - c;
-        
+
         let r, g, b;
         if (h >= 0 && h < 60) [r, g, b] = [c, x, 0];
         else if (h < 120) [r, g, b] = [x, c, 0];
         else if (h < 180) [r, g, b] = [0, c, x];
         else if (h < 240) [r, g, b] = [0, x, c];
         else if (h < 300) [r, g, b] = [x, 0, c];
-        else [r, g, b] = [c, 0, x];
-        
+        else[r, g, b] = [c, 0, x];
+
         return {
             r: Math.floor((r + m) * 255),
             g: Math.floor((g + m) * 255),
             b: Math.floor((b + m) * 255)
         };
     }
-    
+
 
     static complementary(color) {
         const hsv = this.RGBtoHSV(color.r, color.g, color.b);
         hsv.h = (hsv.h + 180) % 360;
         return this.HSVtoRGB(hsv.h, hsv.s, hsv.v);
     }
-    
+
     static analogous(color, spread = 30) {
         const hsv = this.RGBtoHSV(color.r, color.g, color.b);
         return [
@@ -429,20 +501,20 @@ export class PerformanceMonitor {
         this.frameTimes = [];
         this.bufferUpdateTimes = [];
     }
-    
+
     startFrame() {
         this.frameStart = performance.now();
     }
-    
+
     endFrame() {
         const frameTime = performance.now() - this.frameStart;
         this.frameTimes.push(frameTime);
-        
+
         if (this.frameTimes.length > 60) {
             this.frameTimes.shift();
         }
-        
+
         const avg = this.frameTimes.reduce((a, b) => a + b) / this.frameTimes.length;
-        console.log(`Avg frame time: ${avg.toFixed(2)}ms (${(1000/avg).toFixed(1)} FPS)`);
+        console.log(`Avg frame time: ${avg.toFixed(2)}ms (${(1000 / avg).toFixed(1)} FPS)`);
     }
 }

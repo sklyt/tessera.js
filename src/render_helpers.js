@@ -553,7 +553,7 @@ export function normalizeRGBA(r, g, b, a) {
 
   // If the 'a' parameter is provided, add the alpha channel (which is already 0.0-1.0 in standard usage)
   if (typeof a !== 'undefined' && a !== null) {
-    normalized.a = a;
+    normalized.a = a/255;
   }
 
   return normalized;

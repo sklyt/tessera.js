@@ -39,6 +39,20 @@ export class DirtyRegionTracker {
         this.modified = true;
     }
 
+    markRect(x, y, w, h) {
+        const x0 = Math.floor(x);
+        const y0 = Math.floor(y);
+        const x1 = Math.floor(x + w - 1);
+        const y1 = Math.floor(y + h - 1);
+        if (x1 < 0 || y1 < 0 || x0 >= this.canvas.width || y0 >= this.canvas.height) return;
+        this.minX = Math.min(this.minX, Math.max(0, x0));
+        this.minY = Math.min(this.minY, Math.max(0, y0));
+        this.maxX = Math.max(this.maxX, Math.min(this.canvas.width - 1, x1));
+        this.maxY = Math.max(this.maxY, Math.min(this.canvas.height - 1, y1));
+        this.modified = true;
+    }
+
+
     // call once after all writes
     flush() {
         if (!this.modified) {
@@ -517,4 +531,30 @@ export class PerformanceMonitor {
         const avg = this.frameTimes.reduce((a, b) => a + b) / this.frameTimes.length;
         console.log(`Avg frame time: ${avg.toFixed(2)}ms (${(1000 / avg).toFixed(1)} FPS)`);
     }
+}
+
+
+
+/**
+ * Normalizes RGB(A) color components to the range of 0.0 to 1.0.
+ * 
+ * @param {number} r The red component (0-255).
+ * @param {number} g The green component (0-255).
+ * @param {number} b The blue component (0-255).
+ * @param {number} [a] The optional alpha component (0.0-1.0).
+ * @returns {{r: number, g: number, b: number, a?: number}} An object with normalized values.
+ */
+export function normalizeRGBA(r, g, b, a) {
+  const normalized = {
+    r: r / 255.0,
+    g: g / 255.0,
+    b: b / 255.0
+  };
+
+  // If the 'a' parameter is provided, add the alpha channel (which is already 0.0-1.0 in standard usage)
+  if (typeof a !== 'undefined' && a !== null) {
+    normalized.a = a;
+  }
+
+  return normalized;
 }

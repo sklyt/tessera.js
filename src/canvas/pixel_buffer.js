@@ -145,6 +145,55 @@ export class PixelBuffer {
     }
 
     /**
+     * Grow the buffer to a larger size, preserving existing pixels.
+     * If the requested size is smaller or equal, this is a no-op.
+     * @param {number} newWidth
+     * @param {number} newHeight
+     */
+    grow(newWidth, newHeight) {
+        // Only allow increases
+        if (newWidth <= this.width && newHeight <= this.height) return;
+
+        const newSize = newWidth * newHeight * 4;
+
+        // Create new shared buffer + JS view + texture
+        const newBufferId = this.renderer.createSharedBuffer(newSize, newWidth, newHeight);
+        const newData = this.renderer.getBufferData(newBufferId);
+        const newTextureId = this.renderer.loadTextureFromBuffer(newBufferId, newWidth, newHeight);
+
+        // Copy overlapping region from old buffer to new buffer
+        const copyWidth = Math.min(this.width, newWidth);
+        const copyHeight = Math.min(this.height, newHeight);
+
+        for (let row = 0; row < copyHeight; row++) {
+            const srcStart = row * this.width * 4;
+            const srcEnd = srcStart + copyWidth * 4;
+            const dstStart = row * newWidth * 4;
+            newData.set(this.data.subarray(srcStart, srcEnd), dstStart);
+        }
+
+        // Upload entire new buffer to the renderer
+        this.renderer.updateBufferData(newBufferId, newData);
+
+        // Replace internals (release of old buffer is handled by native side/RAII)
+        try {
+            this.renderer.unloadTexture(this.textureId);
+        } catch (e) {
+            // Some backends may not implement unloadTexture; ignore errors
+            if (this.DEBUG) console.warn('unloadTexture failed while growing buffer:', e.message || e);
+        }
+
+        this.bufferId = newBufferId;
+        this.data = newData;
+        this.textureId = newTextureId;
+        this.width = newWidth;
+        this.height = newHeight;
+        this.needsUpload = true;
+
+        if (this.DEBUG) console.log(`Grew buffer to ${newWidth}x${newHeight} (${newSize} bytes)`);
+    }
+
+    /**
      * Clean up resources
      */
     destroy() {

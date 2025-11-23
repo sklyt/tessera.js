@@ -342,6 +342,13 @@ export class Renderer {
      */
     get FPS() { return 0; }
 
+
+    /**
+     * On resize callback
+     */
+    set onResize(cb){}
+    
+    
     /**
     * Set target fps 
     */

@@ -16,60 +16,64 @@ function extractRegion(data, fullWidth, minX, minY, regionWidth, regionHeight) {
 export class DirtyRegionTracker {
     constructor(canvas) {
         this.canvas = canvas;
+        this.width = canvas.width;    // Cache dimensions
+        this.height = canvas.height;
         this.reset();
     }
 
     reset() {
-        this.minX = Infinity;
-        this.minY = Infinity;
-        this.maxX = -Infinity;
-        this.maxY = -Infinity;
+        this.minX = this.width;       // Start inverted (any value will update)
+        this.minY = this.height;
+        this.maxX = -1;
+        this.maxY = -1;
         this.modified = false;
     }
 
-    mark(x, y) {
-        x = Math.floor(x);
-        y = Math.floor(y);
-        // clamp and ignore out-of-bounds marks
-        if (x < 0 || y < 0 || x >= this.canvas.width || y >= this.canvas.height) return;
-        if (x < this.minX) this.minX = x;
-        if (y < this.minY) this.minY = y;
-        if (x > this.maxX) this.maxX = x;
-        if (y > this.maxY) this.maxY = y;
-        this.modified = true;
-    }
-
+    // Optimized: no Math.floor, no clamping, raw updates
     markRect(x, y, w, h) {
-        const x0 = Math.floor(x);
-        const y0 = Math.floor(y);
-        const x1 = Math.floor(x + w - 1);
-        const y1 = Math.floor(y + h - 1);
-        if (x1 < 0 || y1 < 0 || x0 >= this.canvas.width || y0 >= this.canvas.height) return;
-        this.minX = Math.min(this.minX, Math.max(0, x0));
-        this.minY = Math.min(this.minY, Math.max(0, y0));
-        this.maxX = Math.max(this.maxX, Math.min(this.canvas.width - 1, x1));
-        this.maxY = Math.max(this.maxY, Math.min(this.canvas.height - 1, y1));
+        const x0 = x | 0;
+        const y0 = y | 0;
+        const x1 = (x + w - 1) | 0;
+        const y1 = (y + h - 1) | 0;
+        
+        // Update extremes (branch prediction friendly: usually all four update)
+        if (x0 < this.minX) this.minX = x0;
+        if (y0 < this.minY) this.minY = y0;
+        if (x1 > this.maxX) this.maxX = x1;
+        if (y1 > this.maxY) this.maxY = y1;
+        
         this.modified = true;
     }
 
+    // kept for API compatibility, but internally just marks a 1x1 rect
+    mark(x, y) {
+        this.markRect(x, y, 1, 1);
+    }
 
-    // call once after all writes
     flush() {
         if (!this.modified) {
+            return null;
+        }
+
+        // Clamp to valid canvas bounds ONCE
+        const minX = Math.max(0, this.minX);
+        const minY = Math.max(0, this.minY);
+        const maxX = Math.min(this.width - 1, this.maxX);
+        const maxY = Math.min(this.height - 1, this.maxY);
+
+        // Validate bounds
+        if (minX > maxX || minY > maxY) {
             this.reset();
             return null;
         }
 
-        const minX = Math.max(0, Math.floor(this.minX));
-        const minY = Math.max(0, Math.floor(this.minY));
-        const maxX = Math.min(this.canvas.width - 1, Math.floor(this.maxX));
-        const maxY = Math.min(this.canvas.height - 1, Math.floor(this.maxY));
-
         const regionWidth = maxX - minX + 1;
         const regionHeight = maxY - minY + 1;
 
-        // extract and send to renderer
-        const regionData = extractRegion(this.canvas.data, this.canvas.width, minX, minY, regionWidth, regionHeight);
+        // Extract region data
+        const regionData = this._extractRegion(minX, minY, regionWidth, regionHeight);
+        
+        // Upload to GPU
         this.canvas.renderer.updateBufferData(
             this.canvas.bufferId,
             regionData,
@@ -82,8 +86,26 @@ export class DirtyRegionTracker {
         this.reset();
         return result;
     }
-}
 
+    // Optimized extraction: direct subarray slicing
+    _extractRegion(x, y, w, h) {
+        const data = this.canvas.data;
+        const canvasWidth = this.width;
+        const region = new Uint8Array(w * h * 4);
+
+        // Copy row by row (cache-friendly)
+        for (let row = 0; row < h; row++) {
+            const srcOffset = ((y + row) * canvasWidth + x) * 4;
+            const dstOffset = row * w * 4;
+            region.set(
+                data.subarray(srcOffset, srcOffset + w * 4),
+                dstOffset
+            );
+        }
+
+        return region;
+    }
+}
 
 
 
@@ -512,26 +534,48 @@ export class ColorTheory {
 
 export class PerformanceMonitor {
     constructor() {
+        this.metrics = new Map();
         this.frameTimes = [];
-        this.bufferUpdateTimes = [];
+        this.samples = 60; // Keep last 60 frames
     }
-
-    startFrame() {
-        this.frameStart = performance.now();
+    
+    start(name) {
+        this.metrics.set(name, {
+            start: performance.now(),
+            calls: (this.metrics.get(name)?.calls || 0) + 1
+        });
     }
-
-    endFrame() {
-        const frameTime = performance.now() - this.frameStart;
+    
+    end(name) {
+        const metric = this.metrics.get(name);
+        if (metric) {
+            const duration = performance.now() - metric.start;
+            metric.total = (metric.total || 0) + duration;
+            metric.max = Math.max(metric.max || 0, duration);
+            metric.min = Math.min(metric.min || Infinity, duration);
+        }
+    }
+    
+    recordFrameTime(startTime) {
+        const frameTime = performance.now() - startTime;
         this.frameTimes.push(frameTime);
-
-        if (this.frameTimes.length > 60) {
+        if (this.frameTimes.length > this.samples) {
             this.frameTimes.shift();
         }
-
-        const avg = this.frameTimes.reduce((a, b) => a + b) / this.frameTimes.length;
-        console.log(`Avg frame time: ${avg.toFixed(2)}ms (${(1000 / avg).toFixed(1)} FPS)`);
+    }
+    
+    logMetrics() {
+        console.log('Performance Report:');
+        for (const [name, metric] of this.metrics) {
+            const avg = metric.total / metric.calls;
+            console.log(`  ${name}: ${avg.toFixed(2)}ms avg (${metric.min.toFixed(2)}-${metric.max.toFixed(2)}ms)`);
+        }
+        
+        const avgFrameTime = this.frameTimes.reduce((a, b) => a + b) / this.frameTimes.length;
+        console.log(`  Frame Time: ${avgFrameTime.toFixed(2)}ms (${(1000/avgFrameTime).toFixed(1)} FPS)`);
     }
 }
+
 
 
 

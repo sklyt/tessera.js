@@ -1,6 +1,6 @@
 # renderer.js
 
-JavaScript graphics library that exposes a shared buffer between JavaScript and C++. Fill it with pixel data (noise, images, textures), pass it to C++, raylib renders it.
+JavaScript graphics library that exposes a shared framebuffer between JavaScript and C++. Fill it with pixel data (noise, images, textures), pass it to C++, raylib renders it.
 
 
 ## Installation 

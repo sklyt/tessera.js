@@ -16,6 +16,8 @@ export class BlendMode {
     static COLOR_BURN = 'color_burn';
 }
 
+// TODO: inline everything no matter the duplication, eliminate new object creation entirely really bad in tight loops, loop unroll
+
 export class Compositor {
 
     static tempCanvas = undefined;

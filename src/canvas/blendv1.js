@@ -253,9 +253,9 @@ export class Compositor {
         }
         
         const invOutA = 1 / outA;
-        const r = srcR + dstR; if (r > 255) r = 255;
-        const g = srcG + dstG; if (g > 255) g = 255;
-        const b = srcB + dstB; if (b > 255) b = 255;
+        let r = srcR + dstR; if (r > 255) r = 255;
+        let g = srcG + dstG; if (g > 255) g = 255;
+        let b = srcB + dstB; if (b > 255) b = 255;
         
         data[idx] = (r * sa + dstR * da * (1 - sa)) * invOutA;
         data[idx + 1] = (g * sa + dstG * da * (1 - sa)) * invOutA;
@@ -279,9 +279,9 @@ export class Compositor {
         }
         
         const invOutA = 1 / outA;
-        const r = dstR - srcR; if (r < 0) r = 0;
-        const g = dstG - srcG; if (g < 0) g = 0;
-        const b = dstB - srcB; if (b < 0) b = 0;
+        let r = dstR - srcR; if (r < 0) r = 0;
+        let g = dstG - srcG; if (g < 0) g = 0;
+        let b = dstB - srcB; if (b < 0) b = 0;
         
         data[idx] = (r * sa + dstR * da * (1 - sa)) * invOutA;
         data[idx + 1] = (g * sa + dstG * da * (1 - sa)) * invOutA;

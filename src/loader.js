@@ -359,6 +359,14 @@ export class Renderer {
      * @returns {void}
      */
     setWindowState(state) { }
+
+
+    /**
+     * 
+     * @param {string} path
+     * @returns {{width: number, height: number, format: number, data: Uint8Array}} 
+     */
+    loadImage(path){}
 }
 
 /**

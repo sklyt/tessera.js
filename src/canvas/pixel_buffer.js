@@ -11,7 +11,7 @@ export class PixelBuffer {
         this.height = height;
         this.DEBUG = debug
 
-      
+
         const size = width * height * 4; // RGBA = 4 bytes per pixel
 
         // Create shared buffer between JS and C++
@@ -40,17 +40,17 @@ export class PixelBuffer {
         return (y * this.width + x) * 4;
     }
 
-/**
- * Set a single pixel (0-255 color values) 
- * Atomic operation - everything builds from this
- * @param {number} x 
- * @param {number} y 
- * @param {number} r 
- * @param {number} g 
- * @param {number} b 
- * @param {number} a 
- * @returns 
- */
+    /**
+     * Set a single pixel (0-255 color values) 
+     * Atomic operation - everything builds from this
+     * @param {number} x 
+     * @param {number} y 
+     * @param {number} r 
+     * @param {number} g 
+     * @param {number} b 
+     * @param {number} a 
+     * @returns 
+     */
     setPixel(x, y, r, g, b, a = 255) {
         const idx = this.coordToIndex(x, y);
         if (idx === -1) return; // Out of bounds, silently ignore
@@ -72,12 +72,12 @@ export class PixelBuffer {
         this.needsUpload = true;
     }
 
-/**
- * Get pixel color at coordinate
- * @param {number} x 
- * @param {number} y 
- * @returns 
- */
+    /**
+     * Get pixel color at coordinate
+     * @param {number} x 
+     * @param {number} y 
+     * @returns 
+     */
     getPixel(x, y) {
         const idx = this.coordToIndex(x, y);
         if (idx === -1) return null;
@@ -90,33 +90,33 @@ export class PixelBuffer {
         };
     }
 
-/**
- * Fill entire buffer with a color
-* This is a FULL buffer update - no region tracking neede
- * @param {number} r 
- * @param {number} g 
- * @param {number} b 
- * @param {number} a 
- */
+    /**
+     * Fill entire buffer with a color
+    * This is a FULL buffer update - no region tracking neede
+     * @param {number} r 
+     * @param {number} g 
+     * @param {number} b 
+     * @param {number} a 
+     */
     clear(r, g, b, a = 255) {
 
-        // const startTime = performance.now();
+        const startTime = performance.now();
 
 
-        for (let i = 0; i < this.data.length; i += 4) {
-            this.data[i + 0] = r;
-            this.data[i + 1] = g;
-            this.data[i + 2] = b;
-            this.data[i + 3] = a;
-        }
+        // Pack RGBA into a single 32-bit value: (A << 24) | (B << 16) | (G << 8) | R
+        const color = ((a & 0xFF) << 24) | ((b & 0xFF) << 16) | ((g & 0xFF) << 8) | (r & 0xFF);
 
-        // update entire buffer in one call
+        const uint32View = new Uint32Array(this.data.buffer);
+
+        // Native fill - much faster than JS loop
+        uint32View.fill(color);
+
         this.renderer.updateBufferData(this.bufferId, this.data);
         this.needsUpload = true;
 
-    //     const elapsed = performance.now() - startTime;
-    // if (this.DEBUG)
-    //     console.log(`Clear (${this.width}x${this.height}): ${elapsed.toFixed(2)}ms`);
+        const elapsed = performance.now() - startTime;
+        if (this.DEBUG)
+            console.log(`Clear (${this.width}x${this.height}): ${elapsed.toFixed(2)}ms`);
     }
 
     /**
@@ -130,16 +130,16 @@ export class PixelBuffer {
         this.renderer.updateTextureFromBuffer(this.textureId, this.bufferId);
         this.needsUpload = false;
 
-    //     const elapsed = performance.now() - startTime;
-    // if (this.DEBUG) 
-    //     console.log(`GPU upload: ${elapsed.toFixed(2)}ms`);
+        //     const elapsed = performance.now() - startTime;
+        // if (this.DEBUG) 
+        //     console.log(`GPU upload: ${elapsed.toFixed(2)}ms`);
     }
 
-  /**
-   * Draw this buffer to the screen at specified position
-   * @param {number} x 
-   * @param {number} y 
-   */
+    /**
+     * Draw this buffer to the screen at specified position
+     * @param {number} x 
+     * @param {number} y 
+     */
     draw(x, y) {
         this.renderer.drawTexture(this.textureId, { x, y });
     }

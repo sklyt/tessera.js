@@ -1,5 +1,7 @@
 import { PixelBuffer } from "./pixel_buffer.js";
+import { shouldDrawPixel } from "./utils.js";
 
+import { Camera } from "../camera/index.js"
 
 
 export class LineDrawer {
@@ -14,9 +16,10 @@ export class LineDrawer {
      * @param {*} g 
      * @param {*} b 
      * @param {*} a 
+     * @param {Camera}
      * @returns 
      */
-    static drawLine(canvas, x1, y1, x2, y2, r, g, b, a = 255) {
+    static drawLine(canvas, x1, y1, x2, y2, r, g, b, a = 255, camera = undefined) {
         const startTime = performance.now();
 
         // Convert to integers
@@ -32,11 +35,10 @@ export class LineDrawer {
         let x = x1;
         let y = y1;
 
-        // Calculate bounding box for region update
-        const minX = Math.min(x1, x2);
-        const minY = Math.min(y1, y2);
-        const maxX = Math.max(x1, x2);
-        const maxY = Math.max(y1, y2);
+
+        // Track actual drawn region
+        let minX = Infinity, minY = Infinity;
+        let maxX = -Infinity, maxY = -Infinity;
 
         // Direct buffer access for performance
         const data = canvas.data;
@@ -48,13 +50,19 @@ export class LineDrawer {
         // Bresenham's main loop - all integer operations
         while (true) {
             // Draw current pixel if within bounds
-            if (x >= 0 && x < width && y >= 0 && y < height) {
+            if (shouldDrawPixel(x, y, canvas, camera)) {
                 const idx = (y * width + x) * 4;
                 data[idx + 0] = r;
                 data[idx + 1] = g;
                 data[idx + 2] = b;
                 data[idx + 3] = a;
                 pixelCount++;
+
+                // Track bounds
+                minX = Math.min(minX, x);
+                minY = Math.min(minY, y);
+                maxX = Math.max(maxX, x);
+                maxY = Math.max(maxY, y);
             }
 
             // Reached end point?
@@ -74,6 +82,10 @@ export class LineDrawer {
                 err += dx;
                 y += sy;
             }
+        }
+
+        if (pixelCount === 0) {
+            return { pixels: 0, time: 0, regionSize: 0 };
         }
 
         // Extract and update only the affected region
@@ -112,9 +124,10 @@ export class LineDrawer {
      * @param {*} g 
      * @param {*} b 
      * @param {*} a 
+     * @param {Camera}
      * @returns 
      */
-    static drawThickLine(canvas, x1, y1, x2, y2, thickness, r, g, b, a = 255) {
+    static drawThickLine(canvas, x1, y1, x2, y2, thickness, r, g, b, a = 255, camera = undefined) {
         x1 = Math.floor(x1); y1 = Math.floor(y1);
         x2 = Math.floor(x2); y2 = Math.floor(y2);
         thickness = Math.max(1, Math.floor(thickness));
@@ -125,16 +138,18 @@ export class LineDrawer {
         const brushStamp = LineDrawer._createBrushStamp(radius, r, g, b, a);
 
         // Calculate extended bounding box (includes brush radius)
-        const minX = Math.max(0, Math.min(x1, x2) - radius);
-        const minY = Math.max(0, Math.min(y1, y2) - radius);
-        const maxX = Math.min(canvas.width - 1, Math.max(x1, x2) + radius);
-        const maxY = Math.min(canvas.height - 1, Math.max(y1, y2) + radius);
+        // const minX = Math.max(0, Math.min(x1, x2) - radius);
+        // const minY = Math.max(0, Math.min(y1, y2) - radius);
+        // const maxX = Math.min(canvas.width - 1, Math.max(x1, x2) + radius);
+        // const maxY = Math.min(canvas.height - 1, Math.max(y1, y2) + radius);
 
 
 
         // Get all points along the line using Bresenham
         const points = LineDrawer._bresenhamPoints(x1, y1, x2, y2);
 
+        let minX = Infinity, minY = Infinity;
+        let maxX = -Infinity, maxY = -Infinity;
         // Direct buffer manipulation for performance
         const data = canvas.data;
         const width = canvas.width;
@@ -143,10 +158,24 @@ export class LineDrawer {
         // Stamp brush at each point along the line
         let pixelsDrawn = 0;
         for (const { x, y } of points) {
-            pixelsDrawn += LineDrawer._stampBrush(
+            const result = LineDrawer._stampBrush(
                 data, width, height,
-                x, y, radius, brushStamp
+                x, y, radius, brushStamp,
+                camera
             );
+
+            pixelsDrawn += result.pixels;
+
+            if (result.pixels > 0) {
+                minX = Math.min(minX, result.minX);
+                minY = Math.min(minY, result.minY);
+                maxX = Math.max(maxX, result.maxX);
+                maxY = Math.max(maxY, result.maxY);
+            }
+        }
+
+        if (pixelsDrawn === 0) {
+            return { pixels: 0, linePoints: points.length, regionSize: 0 };
         }
 
         // Extract and update the affected region
@@ -238,30 +267,36 @@ export class LineDrawer {
     /**
      * Stamp brush at position with alpha blending
      */
-    static _stampBrush(data, width, height, cx, cy, radius, stamp) {
+    static _stampBrush(data, width, height, cx, cy, radius, stamp, camera) {
         let pixelsDrawn = 0;
+        let minX = Infinity, minY = Infinity;
+        let maxX = -Infinity, maxY = -Infinity;
 
         for (const { dx, dy, r, g, b, a } of stamp) {
             const x = cx + dx;
             const y = cy + dy;
 
-            if (x < 0 || x >= width || y < 0 || y >= height) continue;
+            if (!shouldDrawPixel(x, y, { width, height, data }, camera)) continue;
 
             const idx = (y * width + x) * 4;
 
-            // Alpha blending: new = src*alpha + dst*(1-alpha)
             const alpha = a / 255;
             const invAlpha = 1 - alpha;
 
             data[idx + 0] = Math.floor(r * alpha + data[idx + 0] * invAlpha);
             data[idx + 1] = Math.floor(g * alpha + data[idx + 1] * invAlpha);
             data[idx + 2] = Math.floor(b * alpha + data[idx + 2] * invAlpha);
-            data[idx + 3] = 255;  // Output is opaque
+            data[idx + 3] = 255;
 
             pixelsDrawn++;
+
+            minX = Math.min(minX, x);
+            minY = Math.min(minY, y);
+            maxX = Math.max(maxX, x);
+            maxY = Math.max(maxY, y);
         }
 
-        return pixelsDrawn;
+        return { pixels: pixelsDrawn, minX, minY, maxX, maxY };
     }
 
     /**

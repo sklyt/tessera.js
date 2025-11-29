@@ -21,7 +21,7 @@ export class AADrawer {
     // edge cases
     if (x1 === x2 && y1 === y2) {
       AADrawer._setPixelAA(canvas, x1, y1, r, g, b, a);
-      return { pixels: 1, time: performance.now() - startTime };
+      // return { pixels: 1, time: performance.now() - startTime };
     }
 
     const steep = Math.abs(y2 - y1) > Math.abs(x2 - x1);

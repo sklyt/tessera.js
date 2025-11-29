@@ -1,7 +1,6 @@
 // polygon.js
 
 import { LineDrawer } from "./bresenham.js";
-import { DrawingUtils } from "./utils.js";
 
 export class PolygonDrawer {
     /**
@@ -9,29 +8,13 @@ export class PolygonDrawer {
      * Uses scanline algorithm with edge table
      * Handles convex, concave, and self-intersecting polygons
      */
-       static fillPolygon(canvas, points, r, g, b, a = 255, camera = undefined) {
+    static fillPolygon(canvas, points, r, g, b, a = 255) {
         if (points.length < 3) return { pixels: 0, time: 0 };
         
         const startTime = performance.now();
         
-        // Early camera clipping based on polygon bounds
-        if (camera) {
-            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-            for (const pt of points) {
-                const screenPt = camera.worldToScreen(pt.x, pt.y);
-                minX = Math.min(minX, screenPt.x);
-                minY = Math.min(minY, screenPt.y);
-                maxX = Math.max(maxX, screenPt.x);
-                maxY = Math.max(maxY, screenPt.y);
-            }
-            
-            if (DrawingUtils.shouldClipRegion(camera, minX, minY, maxX - minX, maxY - minY)) {
-                return { pixels: 0, time: 0 };
-            }
-        }
-
         // Build edge table
-        const edges = this._buildEdgeTable(points);
+        const edges = PolygonDrawer._buildEdgeTable(points);
         if (edges.length === 0) return { pixels: 0, time: 0 };
         
         // Find y-range
@@ -41,14 +24,6 @@ export class PolygonDrawer {
             yMax = Math.max(yMax, edge.yMax);
         }
         
-        // Transform y-range if camera is provided
-        if (camera) {
-            const screenMin = camera.worldToScreen(0, yMin);
-            const screenMax = camera.worldToScreen(0, yMax);
-            yMin = Math.min(screenMin.y, screenMax.y);
-            yMax = Math.max(screenMin.y, screenMax.y);
-        }
-        
         // Clamp to canvas bounds
         yMin = Math.max(0, Math.floor(yMin));
         yMax = Math.min(canvas.height - 1, Math.ceil(yMax));
@@ -56,13 +31,8 @@ export class PolygonDrawer {
         // Calculate bounding box for region update
         let minX = Infinity, maxX = -Infinity;
         for (const pt of points) {
-            let x = pt.x;
-            if (camera) {
-                const screenPt = camera.worldToScreen(pt.x, pt.y);
-                x = screenPt.x;
-            }
-            minX = Math.min(minX, x);
-            maxX = Math.max(maxX, x);
+            minX = Math.min(minX, pt.x);
+            maxX = Math.max(maxX, pt.x);
         }
         minX = Math.max(0, Math.floor(minX));
         maxX = Math.min(canvas.width - 1, Math.ceil(maxX));
@@ -82,14 +52,7 @@ export class PolygonDrawer {
             for (const edge of edges) {
                 if (y >= edge.yMin && y < edge.yMax) {
                     // Calculate x intersection for this scanline
-                    let x = edge.x + (y - edge.yMin) * edge.dx;
-                    
-                    // Transform to screen coordinates if camera provided
-                    if (camera) {
-                        const screenPos = camera.worldToScreen(x, y);
-                        x = screenPos.x;
-                    }
-                    
+                    const x = edge.x + (y - edge.yMin) * edge.dx;
                     intersections.push(x);
                 }
             }
@@ -102,13 +65,8 @@ export class PolygonDrawer {
                 const x1 = Math.max(0, Math.floor(intersections[i]));
                 const x2 = Math.min(width - 1, Math.ceil(intersections[i + 1]));
                 
-                // Fill scanline segment with camera checks
+                // Fill scanline segment
                 for (let x = x1; x <= x2; x++) {
-                    // Final camera check
-                    if (camera && DrawingUtils.shouldClipPoint(camera, x, y)) {
-                        continue;
-                    }
-                    
                     const idx = (y * width + x) * 4;
                     data[idx + 0] = r;
                     data[idx + 1] = g;
@@ -119,23 +77,21 @@ export class PolygonDrawer {
             }
         }
         
-        // Safe region update
-        const clampedRegion = DrawingUtils.clampRegion(canvas, minX, yMin, maxX - minX + 1, yMax - yMin + 1);
+        // Extract region for GPU upload
+        const regionWidth = maxX - minX + 1;
+        const regionHeight = yMax - yMin + 1;
+        const regionData = PolygonDrawer._extractRegion(
+            data, width, minX, yMin, regionWidth, regionHeight
+        );
         
-        if (clampedRegion.isValid) {
-            const regionData = DrawingUtils.extractRegionSafe(
-                data, width, clampedRegion.x, clampedRegion.y, 
-                clampedRegion.width, clampedRegion.height
-            );
-
-            if (regionData.length > 0) {
-                DrawingUtils.safeBufferUpdate(
-                    canvas, regionData, clampedRegion.x, clampedRegion.y, 
-                    clampedRegion.width, clampedRegion.height
-                );
-                canvas.needsUpload = true;
-            }
-        }
+        canvas.renderer.updateBufferData(
+            canvas.bufferId,
+            regionData,
+            minX, yMin,
+            regionWidth, regionHeight
+        );
+        
+        canvas.needsUpload = true;
         
         const elapsed = performance.now() - startTime;
         return { 
@@ -188,12 +144,12 @@ export class PolygonDrawer {
     /**
      * Draw polygon outline (stroke)
      */
-    static strokePolygon(canvas, points, thickness, r, g, b, a = 255, camera = undefined) {
+    static strokePolygon(canvas, points, thickness, r, g, b, a = 255) {
         if (points.length < 2) return { time: 0 };
         
         const startTime = performance.now();
         
-        // Use updated LineDrawer with camera support
+        // Draw lines between consecutive vertices
         for (let i = 0; i < points.length; i++) {
             const p1 = points[i];
             const p2 = points[(i + 1) % points.length];
@@ -203,17 +159,13 @@ export class PolygonDrawer {
                 p1.x, p1.y, 
                 p2.x, p2.y, 
                 thickness, 
-                r, g, b, a,
-                camera
+                r, g, b, a
             );
         }
-
-    
         
         const elapsed = performance.now() - startTime;
         return { time: elapsed, vertices: points.length };
     }
-  
     
     /**
      * Create common polygon shapes

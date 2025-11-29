@@ -1,4 +1,6 @@
+import { Camera } from "../camera/index.js";
 import { PixelBuffer } from "./pixel_buffer.js";
+import { DrawingUtils } from "./utils.js";
 
 
 
@@ -14,14 +16,27 @@ export class LineDrawer {
      * @param {*} g 
      * @param {*} b 
      * @param {*} a 
+     * @param {Camera} camera
      * @returns 
      */
-    static drawLine(canvas, x1, y1, x2, y2, r, g, b, a = 255) {
-        const startTime = performance.now();
+    static drawLine(canvas, x1, y1, x2, y2, r, g, b, a = 255, camera = undefined) {
+        // const startTime = performance.now();
 
         // Convert to integers
         x1 = Math.floor(x1); y1 = Math.floor(y1);
         x2 = Math.floor(x2); y2 = Math.floor(y2);
+        if (camera) {
+            const screen1 = camera.worldToScreen(x1, y1);
+            const screen2 = camera.worldToScreen(x2, y2);
+
+            if (DrawingUtils.shouldClipRegion(camera,
+                Math.min(screen1.x, screen2.x),
+                Math.min(screen1.y, screen2.y),
+                Math.abs(screen2.x - screen1.x),
+                Math.abs(screen2.y - screen1.y))) {
+                return { pixels: 0, time: 0, regionSize: 0 };
+            }
+        }
 
         const dx = Math.abs(x2 - x1);
         const dy = Math.abs(y2 - y1);
@@ -47,6 +62,22 @@ export class LineDrawer {
 
         // Bresenham's main loop - all integer operations
         while (true) {
+            let drawX = x, drawY = y;
+            if (camera) {
+                const screenPos = camera.worldToScreen(x, y);
+                drawX = screenPos.x;
+                drawY = screenPos.y;
+
+                if (DrawingUtils.shouldClipPoint(camera, drawX, drawY)) {
+                    // Skip this pixel but continue the line
+                    if (x === x2 && y === y2) break;
+
+                    const e2 = err * 2;
+                    if (e2 > -dy) { err -= dy; x += sx; }
+                    if (e2 < dx) { err += dx; y += sy; }
+                    continue;
+                }
+            }
             // Draw current pixel if within bounds
             if (x >= 0 && x < width && y >= 0 && y < height) {
                 const idx = (y * width + x) * 4;
@@ -76,28 +107,55 @@ export class LineDrawer {
             }
         }
 
+        // Calculate final region for update (considering camera transform)
+        let updateMinX = minX, updateMinY = minY, updateMaxX = maxX, updateMaxY = maxY;
+
+        if (camera) {
+            // Transform bounds to screen space for update region
+            const screenMin = camera.worldToScreen(minX, minY);
+            const screenMax = camera.worldToScreen(maxX, maxY);
+            updateMinX = Math.min(screenMin.x, screenMax.x);
+            updateMinY = Math.min(screenMin.y, screenMax.y);
+            updateMaxX = Math.max(screenMin.x, screenMax.x);
+            updateMaxY = Math.max(screenMin.y, screenMax.y);
+        }
+
+        const regionWidth = updateMaxX - updateMinX + 1;
+        const regionHeight = updateMaxY - updateMinY + 1;
+
+        const regionData = DrawingUtils.extractRegionSafe(
+            data, width, updateMinX, updateMinY, regionWidth, regionHeight
+        );
+
+        if (regionData.length > 0) {
+            DrawingUtils.safeBufferUpdate(
+                canvas, regionData, updateMinX, updateMinY, regionWidth, regionHeight
+            );
+            canvas.needsUpload = true;
+        }
+
         // Extract and update only the affected region
-        const regionWidth = maxX - minX + 1;
-        const regionHeight = maxY - minY + 1;
-        const regionData = LineDrawer._extractRegion(
-            data, width, minX, minY, regionWidth, regionHeight
-        );
+        // const regionWidth = maxX - minX + 1;
+        // const regionHeight = maxY - minY + 1;
+        // const regionData = LineDrawer._extractRegion(
+        //     data, width, minX, minY, regionWidth, regionHeight
+        // );
 
-        canvas.renderer.updateBufferData(
-            canvas.bufferId,
-            regionData,
-            minX, minY,
-            regionWidth, regionHeight
-        );
+        // canvas.renderer.updateBufferData(
+        //     canvas.bufferId,
+        //     regionData,
+        //     minX, minY,
+        //     regionWidth, regionHeight
+        // );
 
-        canvas.needsUpload = true;
+        // canvas.needsUpload = true;
 
-        const elapsed = performance.now() - startTime;
-        return {
-            pixels: pixelCount,
-            time: elapsed,
-            regionSize: regionWidth * regionHeight
-        };
+        // const elapsed = performance.now() - startTime;
+        // return {
+        //     pixels: pixelCount,
+        //     time: elapsed,
+        //     regionSize: regionWidth * regionHeight
+        // };
     }
 
     /**
@@ -112,25 +170,58 @@ export class LineDrawer {
      * @param {*} g 
      * @param {*} b 
      * @param {*} a 
+     * @param {Camera} camera 
      * @returns 
      */
-    static drawThickLine(canvas, x1, y1, x2, y2, thickness, r, g, b, a = 255) {
+    static drawThickLine(canvas, x1, y1, x2, y2, thickness, r, g, b, a = 255, camera = undefined) {
         x1 = Math.floor(x1); y1 = Math.floor(y1);
         x2 = Math.floor(x2); y2 = Math.floor(y2);
         thickness = Math.max(1, Math.floor(thickness));
-        const startTime = performance.now();
+        // const startTime = performance.now();
+
+
 
         // Create circular brush stamp (once per thickness)
         const radius = Math.ceil(thickness / 2);
+        if (camera) {
+            const screen1 = camera.worldToScreen(x1, y1);
+            const screen2 = camera.worldToScreen(x2, y2);
+
+            if (DrawingUtils.shouldClipRegion(camera,
+                Math.min(screen1.x, screen2.x) - radius,
+                Math.min(screen1.y, screen2.y) - radius,
+                Math.abs(screen2.x - screen1.x) + radius * 2,
+                Math.abs(screen2.y - screen1.y) + radius * 2)) {
+                // return { pixels: 0, time: 0, regionSize: 0 };
+            }
+        }
+
         const brushStamp = LineDrawer._createBrushStamp(radius, r, g, b, a);
 
         // Calculate extended bounding box (includes brush radius)
-        const minX = Math.max(0, Math.min(x1, x2) - radius);
-        const minY = Math.max(0, Math.min(y1, y2) - radius);
-        const maxX = Math.min(canvas.width - 1, Math.max(x1, x2) + radius);
-        const maxY = Math.min(canvas.height - 1, Math.max(y1, y2) + radius);
+        // const minX = Math.max(0, Math.min(x1, x2) - radius);
+        // const minY = Math.max(0, Math.min(y1, y2) - radius);
+        // const maxX = Math.min(canvas.width - 1, Math.max(x1, x2) + radius);
+        // const maxY = Math.min(canvas.height - 1, Math.max(y1, y2) + radius);
 
+        let minX = Math.min(x1, x2) - radius;
+        let minY = Math.min(y1, y2) - radius;
+        let maxX = Math.max(x1, x2) + radius;
+        let maxY = Math.max(y1, y2) + radius;
 
+        if (camera) {
+            const screenMin = camera.worldToScreen(minX, minY);
+            const screenMax = camera.worldToScreen(maxX, maxY);
+            minX = Math.min(screenMin.x, screenMax.x);
+            minY = Math.min(screenMin.y, screenMax.y);
+            maxX = Math.max(screenMin.x, screenMax.x);
+            maxY = Math.max(screenMin.y, screenMax.y);
+        }
+        // Clamp to canvas bounds
+        minX = Math.max(0, minX);
+        minY = Math.max(0, minY);
+        maxX = Math.min(canvas.width - 1, maxX);
+        maxY = Math.min(canvas.height - 1, maxY);
 
         // Get all points along the line using Bresenham
         const points = LineDrawer._bresenhamPoints(x1, y1, x2, y2);
@@ -140,38 +231,69 @@ export class LineDrawer {
         const width = canvas.width;
         const height = canvas.height;
 
-        // Stamp brush at each point along the line
+        // Stamp brush at each point along the line with camera checks
         let pixelsDrawn = 0;
         for (const { x, y } of points) {
+            let stampX = x, stampY = y;
+
+            // Transform to screen coordinates if camera provided
+            if (camera) {
+                const screenPos = camera.worldToScreen(x, y);
+                stampX = Math.floor(screenPos.x);
+                stampY = Math.floor(screenPos.y);
+            }
+
             pixelsDrawn += LineDrawer._stampBrush(
                 data, width, height,
-                x, y, radius, brushStamp
+                stampX, stampY, radius, brushStamp, camera
             );
         }
 
         // Extract and update the affected region
+
+        // Extract and update the affected region
         const regionWidth = maxX - minX + 1;
         const regionHeight = maxY - minY + 1;
-        const regionData = LineDrawer._extractRegion(
-            data, width, minX, minY, regionWidth, regionHeight
-        );
 
-        canvas.renderer.updateBufferData(
-            canvas.bufferId,
-            regionData,
-            minX, minY,
-            regionWidth, regionHeight
-        );
+        const clampedRegion = DrawingUtils.clampRegion(canvas, minX, minY, regionWidth, regionHeight);
 
-        canvas.needsUpload = true;
+        if (clampedRegion.isValid) {
+            const regionData = DrawingUtils.extractRegionSafe(
+                data, width, clampedRegion.x, clampedRegion.y,
+                clampedRegion.width, clampedRegion.height
+            );
 
-        const elapsed = performance.now() - startTime;
-        return {
-            pixels: pixelsDrawn,
-            linePoints: points.length,
-            time: elapsed,
-            regionSize: regionWidth * regionHeight
-        };
+            if (regionData.length > 0) {
+                DrawingUtils.safeBufferUpdate(
+                    canvas, regionData, clampedRegion.x, clampedRegion.y,
+                    clampedRegion.width, clampedRegion.height
+                );
+                canvas.needsUpload = true;
+            }
+        }
+
+        // const regionWidth = maxX - minX + 1;
+        // const regionHeight = maxY - minY + 1;
+        // const regionData = LineDrawer._extractRegion(
+        //     data, width, minX, minY, regionWidth, regionHeight
+        // );
+
+        // canvas.renderer.updateBufferData(
+        //     canvas.bufferId,
+        //     regionData,
+        //     minX, minY,
+        //     regionWidth, regionHeight
+        // );
+
+        // canvas.needsUpload = true;
+
+        // const elapsed = performance.now() - startTime;
+        // return {
+        //     pixels: pixelsDrawn,
+        //     linePoints: points.length,
+        //     time: elapsed,
+        //     regionSize: regionWidth * regionHeight
+        // };
     }
 
     /**
@@ -238,12 +360,20 @@ export class LineDrawer {
     /**
      * Stamp brush at position with alpha blending
      */
-    static _stampBrush(data, width, height, cx, cy, radius, stamp) {
+    static _stampBrush(data, width, height, cx, cy, radius, stamp, camera = undefined) {
         let pixelsDrawn = 0;
 
         for (const { dx, dy, r, g, b, a } of stamp) {
             const x = cx + dx;
             const y = cy + dy;
+
+            if (camera) {
+                // For brush stamping, we're already in screen coordinates
+                // Just check if we should clip
+                if (DrawingUtils.shouldClipPoint(camera, x, y)) {
+                    continue;
+                }
+            }
 
             if (x < 0 || x >= width || y < 0 || y >= height) continue;
 

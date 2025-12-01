@@ -481,6 +481,11 @@ im.cleanup()                          // remove all registered callbacks
 
 ```
 
+### Load Image helper 
+
+```js
+    renderer.loadImage(path) // @returns {width: number, height: number, format: number, data: Uint8Array}
+```
 
 ### Utils
 

@@ -31,6 +31,8 @@ export class PixelBuffer {
     /**
      * Convert 2D coordinate to 1D memory index
      * This is THE fundamental operation - understand this and you understand pixel buffers
+     * @param {number} x 
+     * @param {number} y 
      */
     coordToIndex(x, y) {
         // Bounds checking is critical - out of bounds = memory corruption or crash (nasty segfault)

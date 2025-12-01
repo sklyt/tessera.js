@@ -23,14 +23,14 @@ Every abstraction in this library builds from this primitive.
 ## Quick Start
 
 ```js
-import { loadRenderer, PixelBuffer, Texture } from "rayrenderer.js";
+import { loadRenderer, PixelBuffer, Texture, DirtyRegionTracker } from "rayrenderer.js";
 
 const { Renderer, FULLSCREEN, RESIZABLE } = loadRenderer();
 
 const renderer = new Renderer();
 
 // width, height, title
-if (!renderer.initialize(1920, 990, "Renderer")) {
+if (!renderer.initialize(1920, 910, "Renderer")) {
     console.error("Failed to initialize renderer");
     process.exit(1);
 }
@@ -39,23 +39,26 @@ renderer.setWindowState(RESIZABLE);
 renderer.targetFPS = 60;
 
 const canvas = new PixelBuffer(renderer, 650, 400); // where every pixel goes
+canvas.clear(1, 1, 1, 255)
 const data = canvas.data; // "pointer" to raw buffer for direct memory access
 const width = canvas.width; // prefer variables outside loop, constant access in tight loop can be bad
 const height = canvas.height;
-
-// random star like noise
+const tracker = new DirtyRegionTracker(canvas) // VERY IMPORTANT (in direct memory access): tells the renderer which parts to update
+// random star like noise (direct memory access)
 for (let i = 0; i < 2000; i++) {
     const x = Math.floor(Math.random() * width);
     const y = Math.floor(Math.random() * height);
     const brightness = 100 + Math.random() * 155;
     const idx = (y * width + x) * 4; // formula from screen(x, y) to buffer(linear memory)
-    data[idx + 0] = brightness;
+    data[idx] = brightness;
     data[idx + 1] = brightness;
     data[idx + 2] = brightness;
     data[idx + 3] = 255;
+    tracker.mark(x, y) 
 }
 
-canvas.upload(); // always tell the renderer to commit changes
+tracker.flush() // updates the data buffer
+canvas.upload() // tell the Graphics card to catch up and show changes
 
 renderer.onRender(() => {
     // c++ calls you before rendering, this is where you "draw" stuff

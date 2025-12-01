@@ -57,7 +57,7 @@ for (let i = 0; i < 2000; i++) {
     tracker.mark(x, y) 
 }
 
-tracker.flush() // updates the data buffer
+tracker.flush() // updates the internal c++ data buffer
 canvas.upload() // tell the Graphics card to catch up and show changes
 
 renderer.onRender(() => {

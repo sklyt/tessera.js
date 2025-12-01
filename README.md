@@ -4,6 +4,29 @@ Node.js graphics library that exposes a shared framebuffer between JavaScript
 and C++. Fill it with pixel data (noise, images, textures), pass it to C++,
 raylib renders it.
 
+
+- [renderer.js](#rendererjs)
+  * [Installation](#installation)
+  * [Core Concepts](#core-concepts)
+  * [Quick Start](#quick-start)
+  * [Examples](#examples)
+    + [Rendering Simplex Noise](#rendering-simplex-noise)
+    + [Animation](#animation)
+    + [Input Handling](#input-handling)
+  * [API Reference](#api-reference)
+    + [Pixel Buffer](#pixel-buffer)
+    + [Primitives](#primitives)
+      - [Lines](#lines)
+        * [Anti-aliased](#anti-aliased)
+      - [Shapes](#shapes)
+      - [Polygons](#polygons)
+      - [Camera](#camera)
+      - [Font](#font)
+    + [Input](#input)
+    + [Utils](#utils)
+  * [License](#license)
+
+
 ## Installation
 
 ```bash

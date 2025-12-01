@@ -62,7 +62,17 @@ canvas.upload() // tell the Graphics card to catch up and show changes
 
 renderer.onRender(() => {
     // c++ calls you before rendering, this is where you "draw" stuff
+    renderer.clear({ r: 0, g: 0, b: 0, a: 50 }); // use if drawing on the window directly like fps text below
+    animationTime += 0.016;
     canvas.draw(0, 0); // draw at 0,0 top left
+
+    // draw on the window directly (see font to draw on the canvas)
+    renderer.drawText(
+        `FPS: ${renderer.FPS} | Buffer: ${canvas.width}x${canvas.height} | Memory: ${(canvas.width * canvas.height * 4 / 1024).toFixed(1)}KB`,
+        { x: 20, y: 750 },
+        16,
+        { r: 1, g: 1, b: 1, a: 1 }
+    );
 });
 
 function Loop() {
@@ -90,7 +100,10 @@ process.on("SIGINT", () => {
 ### Rendering Simplex Noise
 
 ```js
+
 function generateSimplexNoise(data, width, height, options = {}) {
+    const simplextracker = new DirtyRegionTracker(canvas) 
+    simplextracker.markRect(0, 0, width, height) // mark a huge region at once very fast
     // simplified Simplex-like noise
     const scale = options.scale || 0.01;
 
@@ -108,6 +121,8 @@ function generateSimplexNoise(data, width, height, options = {}) {
             data[idx + 3] = 255; // A
         }
     }
+
+    simplextracker.flush()
 }
 
 generateSimplexNoise(canvas.data, canvas.width, canvas.height);
@@ -123,7 +138,7 @@ renderer.onRender(() => {
 Concepts are the same all you do is clear the canvas every frame
 
 ```js
-import { LineDrawer } from "rayrenderer.js"; // line drawing utility
+import { LineDrawer } from "rayrenderer.js"; // line drawing utility handles tracking and flushing
 let animationTime = 0;
 function demoBasicLines() {
     canvas.clear(20, 25, 35, 255);
@@ -221,13 +236,13 @@ let recty = 100;
 
 renderer.onRender(() => {
     canvas.clear(20, 25, 35, 255);
-    ShapeDrawer.fillRect(canvas, rectx, recty, 280, 30, 40, 45, 55, 200);
+    ShapeDrawer.fillRect(canvas, rectx, recty, 280, 100, 40, 45, 55, 200);
     canvas.upload();
     canvas.draw(0, 0);
 });
 
 function Loop() {
-    renderer.input.GetInput(); // poll input
+     renderer.input.GetInput(); // poll input
 
     if (inputMap.isActionActive("move_left")) {
         rectx -= 10;
@@ -477,7 +492,88 @@ font.drawMultilineText(
 font.drawTextWithTint(canvas, text, x, y, r, g, b, a = 255, camera = undefined);
 ```
 
-## Roadmap
+### Input 
+
+```js
+import {InputMap} from "rayrenderer.js"
+
+// InputMap - action mapping & callback helpers
+const im = new InputMap(renderer.input)
+
+im.mapAction(actionName, keys)        // map keyboard keys (string|[string]) -> action
+im.MapMouseAction(actionName, keys)   // map mouse buttons (string|[string]) -> action
+
+im.isMouseActionActive(actionName)    // => boolean (mouse button down)
+im.isMousePressed(actionName)         // => boolean (mouse button pressed)
+im.IsMouseActionReleased(actionName)  // => boolean (mouse button released)
+
+im.mousePosition                      // getter => { x:number, y:number }
+im.mouseDelta                         // getter => { x:number, y:number }
+im.mouseWheelDelta                    // getter => number
+
+im.isActionActive(actionName)         // => boolean (key down)
+im.wasActionTriggered(actionName)     // => boolean (key pressed)  // note: implementation uses isKeyDown
+im.isActionReleased(actionName)       // => boolean (key released)
+
+im.onActionDown(actionName, callback) // register callback on mapped key down; returns nothing (stores callback ids)
+im.onActionUp(actionName, callback)   // register callback on mapped key up
+im.onMouseDown(actionName, callback)  // register callback on mapped mouse down
+im.onMouseUp(actionName, callback)    // register callback on mapped mouse up
+im.onMouseMove(callback)              // register mouse-move callback (event)
+im.onMouseWheel(callback)             // register mouse-wheel callback (event)
+
+im.cleanup()                          // remove all registered callbacks
+
+// callback signature used:
+// (actionName, event) or (event) where event = {
+//   type, keyCode, keyName, mouseButton,
+//   mousePosition: {x,y}, mouseDelta: {x,y},
+//   wheelDelta, timestamp
+// }
+
+
+```
+
+
+### Utils
+
+
+```js
+
+import {DirtyRegionTracker, ColorTheory, PerformanceMonitor, normalizeRGBA} from "rayrenderer.js"
+// DirtyRegionTracker
+// constructor(canvas: PixelBuffer)
+new DirtyRegionTracker(canvas)
+tracker.reset()                       // reset internal bounds
+tracker.markRect(x, y, w, h)         // mark changed rectangle (fast, integer ops)
+tracker.mark(x, y)                   // mark single pixel (alias)
+tracker.flush() -> {minX, minY, regionWidth, regionHeight} | null
+  // extracts region, calls canvas.renderer.updateBufferData(...), sets canvas.needsUpload = true
+  // returns null if nothing to flush
+
+
+
+// ColorTheory (pure functions)
+ColorTheory.RGBtoHSV(r, g, b) -> {h, s, v}    // s,v in 0..100
+ColorTheory.HSVtoRGB(h, s, v) -> {r, g, b}    // r,g,b 0..255
+ColorTheory.complementary({r,g,b}) -> {r,g,b}
+ColorTheory.analogous({r,g,b}, spread = 30) -> [{r,g,b}, {r,g,b}, {r,g,b}]
+
+// PerformanceMonitor
+// constructor()
+new PerformanceMonitor()
+pm.start(name)                       // begin timing a named metric
+pm.end(name)                         // end timing, accumulate stats
+pm.recordFrameTime(startTime)        // push frame time sample
+pm.logMetrics()                      // console.log aggregated metrics
+
+// normalizeRGBA
+// normalizeRGBA(r, g, b, a?) -> { r, g, b, a? }
+// r,g,b returned in 0.0..1.0. If 'a' provided, returned as a/255.
+normalizeRGBA(r, g, b, a)
+
+
+```
 
 ## License
 
@@ -486,4 +582,3 @@ This project is licensed under the **AGPL-3.0-or-later License** - see the
 
 SPDX-License-Identifier: AGPL-3.0-or-later
 
-## Contributing

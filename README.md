@@ -308,32 +308,12 @@ canvas.destroy();
 import { LineDrawer } from "rayrenderer.js";
 
 // draw a 1px Bresenham line.
-LineDrawer.drawLine(
-    canvas,
-    x1,
-    y1,
-    x2,
-    y2,
-    r,
-    g,
-    b,
-    a = 255,
-    camera = undefined,
+LineDrawer.drawLine(canvas, x1, y1, x2, y2, r, g, b, a = 255, camera = undefined,
 );
 
 // draw a thick line by stamping a precomputed circular brush along Bresenham points.
 LineDrawer.drawThickLine(
-    canvas,
-    x1,
-    y1,
-    x2,
-    y2,
-    thickness,
-    r,
-    g,
-    b,
-    a = 255,
-    camera = undefined,
+    canvas, x1, y1, x2, y2, thickness, r, g, b, a = 255, camera = undefined,
 );
 ```
 
@@ -343,37 +323,13 @@ LineDrawer.drawThickLine(
 import { AADrawer } from "rayrenderer.js";
 
 AADrawer.drawLineAA(
-    canvas,
-    x1,
-    y1,
-    x2,
-    y2,
-    r,
-    g,
-    b,
-    a = 255,
+    canvas, x1, y1,  x2, y2, r, g,b, a = 255,
     camera = undefined,
 );
-AADrawer.drawCircleAA(
-    canvas,
-    cx,
-    cy,
-    radius,
-    r,
-    g,
-    b,
-    a = 255,
+AADrawer.drawCircleAA( canvas, cx, cy, radius, r, g, b, a = 255,
     camera = undefined,
 );
-AADrawer.fillCircleAA(
-    canvas,
-    cx,
-    cy,
-    radius,
-    r,
-    g,
-    b,
-    a = 255,
+AADrawer.fillCircleAA(canvas, cx, cy,  radius,  r,  g,  b, a = 255,
     camera = undefined,
 );
 ```
@@ -384,51 +340,19 @@ AADrawer.fillCircleAA(
 import { ShapeDrawer } from "rayrenderer.js";
 
 ShapeDrawer.fillRect(
-    canvas,
-    x,
-    y,
-    width,
-    height,
-    r,
-    g,
-    b,
-    a = 255,
+    canvas, x,  y, width, height, r, g, b, a = 255,
     camera = undefined,
 );
 ShapeDrawer.strokeRect(
-    canvas,
-    x,
-    y,
-    width,
-    height,
-    thickness,
-    r,
-    g,
-    b,
-    a = 255,
+    canvas, x, y, width, height, thickness, r, g, b, a = 255,
     camera = undefined,
 );
 ShapeDrawer.fillCircle(
-    canvas,
-    cx,
-    cy,
-    radius,
-    r,
-    g,
-    b,
-    a = 255,
+    canvas, cx, cy, radius, r, g, b, a = 255,
     camera = undefined,
 );
 ShapeDrawer.strokeCircle(
-    canvas,
-    cx,
-    cy,
-    radius,
-    thickness,
-    r,
-    g,
-    b,
-    a = 255,
+    canvas, cx, cy, radius, thickness, r, g, b, a = 255,
     camera = undefined,
 );
 ```

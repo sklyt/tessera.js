@@ -367,6 +367,11 @@ export class Renderer {
      * @returns {{width: number, height: number, format: number, data: Uint8Array}} 
      */
     loadImage(path){}
+
+    /**
+     * poll for input
+     */
+    GetInput(){}
 }
 
 /**

@@ -1,7 +1,7 @@
 {
-  "name": "rayrenderer.js",
-  "version": "0.1.9",
-  "description": "",
+  "name": "cera.js",
+  "version": "0.2.0",
+  "description": "tabula cerata - a mutable frame buffer that you wipe and rewrite X times a second.",
   "type": "module",
   "main": "dist/cjs/index.cjs",
   "module": "dist/esm/index.js",
@@ -27,7 +27,12 @@
     "raylib",
     "raylib.js",
     "node.js",
-    "renderer.js"
+    "renderer.js", 
+    "pixies",
+    "graphics",
+    "raytracer",
+    "raster",
+    "rasterization"
   ],
   "author": "sk",
   "license": "GPL-3.0-or-later",

@@ -1,7 +1,7 @@
 // polygon.js
 
 import { LineDrawer } from "./bresenham.js";
-
+// TODO: add cam
 export class PolygonDrawer {
     /**
      * Fill a polygon defined by an array of points

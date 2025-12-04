@@ -1,5 +1,5 @@
 import { PixelBuffer } from "./pixel_buffer.js";
-
+// TODO: add cam
 export class AADrawer {
   /**
    * Wu's line algorithm - anti-aliased line drawing

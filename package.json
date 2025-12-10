@@ -1,5 +1,5 @@
 {
-  "name": "tessella.js",
+  "name": "tessera.js",
   "version": "0.2.0",
   "description": "tabula cerata - a mutable frame buffer that you wipe and rewrite X times a second.",
   "type": "module",
@@ -28,7 +28,7 @@
     "raylib.js",
     "node.js",
     "renderer.js", 
-    "pixies",
+    "pixel",
     "graphics",
     "raytracer",
     "raster",

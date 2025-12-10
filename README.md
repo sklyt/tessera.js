@@ -30,7 +30,7 @@ raylib renders it.
 ## Installation
 
 ```bash
-npm i rayrenderer.js
+npm i tessera.js
 ```
 
 ## Core Concepts
@@ -38,7 +38,7 @@ npm i rayrenderer.js
 **Frame Buffer** - raw pixels that map to a screen
 
 ```js
-import { PixelBuffer } from "rayrenderer.js"; // raw memory
+import { PixelBuffer } from "tessera.js"; // raw memory
 ```
 
 Every abstraction in this library builds from this primitive.
@@ -46,7 +46,7 @@ Every abstraction in this library builds from this primitive.
 ## Quick Start
 
 ```js
-import { loadRenderer, PixelBuffer, Texture, DirtyRegionTracker } from "rayrenderer.js";
+import { loadRenderer, PixelBuffer, Texture, DirtyRegionTracker } from "tessera.js";
 
 const { Renderer, FULLSCREEN, RESIZABLE } = loadRenderer();
 
@@ -161,7 +161,7 @@ renderer.onRender(() => {
 Concepts are the same all you do is clear the canvas every frame
 
 ```js
-import { LineDrawer } from "rayrenderer.js"; // line drawing utility handles tracking and flushing
+import { LineDrawer } from "tessera.js"; // line drawing utility handles tracking and flushing
 let animationTime = 0;
 function demoBasicLines() {
     canvas.clear(20, 25, 35, 255);
@@ -241,7 +241,7 @@ function Loop() {
 ### Input Handling
 
 ```js
-import { InputMap, loadRenderer, ShapeDrawer } from "rayrenderer.js";
+import { InputMap, loadRenderer, ShapeDrawer } from "tessera.js";
 
 // helper class to capture input in a sane way
 const inputMap = new InputMap(renderer.input);
@@ -305,7 +305,7 @@ canvas.destroy();
 #### Lines
 
 ```js
-import { LineDrawer } from "rayrenderer.js";
+import { LineDrawer } from "tessera.js";
 
 // draw a 1px Bresenham line.
 LineDrawer.drawLine(canvas, x1, y1, x2, y2, r, g, b, a = 255, camera = undefined,
@@ -320,7 +320,7 @@ LineDrawer.drawThickLine(
 ##### Anti-aliased
 
 ```js
-import { AADrawer } from "rayrenderer.js";
+import { AADrawer } from "tessera.js";
 
 AADrawer.drawLineAA(
     canvas, x1, y1,  x2, y2, r, g,b, a = 255,
@@ -337,7 +337,7 @@ AADrawer.fillCircleAA(canvas, cx, cy,  radius,  r,  g,  b, a = 255,
 #### Shapes
 
 ```js
-import { ShapeDrawer } from "rayrenderer.js";
+import { ShapeDrawer } from "tessera.js";
 
 ShapeDrawer.fillRect(
     canvas, x,  y, width, height, r, g, b, a = 255,
@@ -360,7 +360,7 @@ ShapeDrawer.strokeCircle(
 #### Polygons
 
 ```js
-import { PolygonDrawer } from "rayrenderer.js";
+import { PolygonDrawer } from "tessera.js";
 
 // Create common polygon shapes (return array of points [{x,y}])
 PolygonDrawer.createRegularPolygon(cx, cy, radius, sides);
@@ -374,7 +374,7 @@ PolygonDrawer.strokePolygon(canvas, points, thickness, r, g, b, a = 255);
 #### Camera
 
 ```js
-import { Camera } from "rayrenderer.js";
+import { Camera } from "tessera.js";
 // camera - world <-> screen transforms
 const cam = new Camera(x = 0, y = 0, width = 800, height = 600);
 cam.worldToScreen(worldX, worldY); // => { x, y } (applies viewport if set)
@@ -442,7 +442,7 @@ font.drawTextWithTint(canvas, text, x, y, r, g, b, a = 255, camera = undefined);
 ### Input 
 
 ```js
-import {InputMap} from "rayrenderer.js"
+import {InputMap} from "tessera.js"
 
 // InputMap - action mapping & callback helpers
 const im = new InputMap(renderer.input)
@@ -492,7 +492,7 @@ im.cleanup()                          // remove all registered callbacks
 
 ```js
 
-import {DirtyRegionTracker, ColorTheory, PerformanceMonitor, normalizeRGBA} from "rayrenderer.js"
+import {DirtyRegionTracker, ColorTheory, PerformanceMonitor, normalizeRGBA} from "tessera.js"
 // DirtyRegionTracker
 // constructor(canvas: PixelBuffer)
 new DirtyRegionTracker(canvas)

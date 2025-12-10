@@ -124,7 +124,7 @@ export class InputMap {
         const keys = this.actions.get(actionName);
         if (!keys) return false;
 
-        return keys.some(key => this.input.isKeyDown(key));
+        return keys.some(key => this.input.isKeyPressed(key));
     }
 
     /**

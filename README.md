@@ -462,8 +462,75 @@ import {InputMap} from "tessera.js"
 // InputMap - action mapping & callback helpers
 const im = new InputMap(renderer.input)
 
+/**
+ * key mappings:
+ * void InputManager::InitializeKeyMappings()
+{
+    // Letters
+    for (char c = 'A'; c <= 'Z'; c++)
+    {
+        keyNameToCode_[std::string(1, c)] = c;
+        keyCodeToName_[c] = std::string(1, c);
+    }
+
+    // Numbers
+    for (char c = '0'; c <= '9'; c++)
+    {
+        keyNameToCode_[std::string(1, c)] = c;
+        keyCodeToName_[c] = std::string(1, c);
+    }
+
+    // Special keys
+    keyNameToCode_["Space"] = KEY_SPACE;
+    keyCodeToName_[KEY_SPACE] = "Space";
+
+    keyNameToCode_["Enter"] = KEY_ENTER;
+    keyCodeToName_[KEY_ENTER] = "Enter";
+
+    keyNameToCode_["Escape"] = KEY_ESCAPE;
+    keyCodeToName_[KEY_ESCAPE] = "Escape";
+
+    keyNameToCode_["Backspace"] = KEY_BACKSPACE;
+    keyCodeToName_[KEY_BACKSPACE] = "Backspace";
+
+    keyNameToCode_["Tab"] = KEY_TAB;
+    keyCodeToName_[KEY_TAB] = "Tab";
+
+    keyNameToCode_["Shift"] = KEY_LEFT_SHIFT;
+    keyCodeToName_[KEY_LEFT_SHIFT] = "Shift";
+
+    keyNameToCode_["Control"] = KEY_LEFT_CONTROL;
+    keyCodeToName_[KEY_LEFT_CONTROL] = "Control";
+
+    keyNameToCode_["Alt"] = KEY_LEFT_ALT;
+    keyCodeToName_[KEY_LEFT_ALT] = "Alt";
+
+    // Arrow keys
+    keyNameToCode_["ArrowUp"] = KEY_UP;
+    keyCodeToName_[KEY_UP] = "ArrowUp";
+
+    keyNameToCode_["ArrowDown"] = KEY_DOWN;
+    keyCodeToName_[KEY_DOWN] = "ArrowDown";
+
+    keyNameToCode_["ArrowLeft"] = KEY_LEFT;
+    keyCodeToName_[KEY_LEFT] = "ArrowLeft";
+
+    keyNameToCode_["ArrowRight"] = KEY_RIGHT;
+    keyCodeToName_[KEY_RIGHT] = "ArrowRight";
+
+    // Function keys
+    for (int i = 1; i <= 12; i++)
+    {
+        std::string name = "F" + std::to_string(i);
+        int keyCode = KEY_F1 + (i - 1);
+        keyNameToCode_[name] = keyCode;
+        keyCodeToName_[keyCode] = name;
+    }
+}
+ * */
+
 im.mapAction(actionName, keys)        // map keyboard keys (string|[string]) -> action e.g im.mapAction("move_left", ["A", "ArrowLeft"]);
-im.MapMouseAction(actionName, keys)   // map mouse buttons (string|[string]) -> action  e.g im.mapaction("left_click", [0]) // keys 0, 1, 2, 3, 4, 5 <- see raylib docs
+im.MapMouseAction(actionName, keys)   // map mouse buttons (string|[string]) -> action  e.g im.mapaction("left_click", [0]) 
 
 im.isMouseActionActive(actionName)    // => boolean (mouse button down)
 im.isMousePressed(actionName)         // => boolean (mouse button pressed)

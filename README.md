@@ -1,11 +1,11 @@
-# renderer.js
+# tessera.js
 
 Node.js graphics library that exposes a shared framebuffer between JavaScript
 and C++. Fill it with pixel data (noise, images, textures), pass it to C++,
 raylib renders it.
 
 
-- [renderer.js](#rendererjs)
+- [tessera.js](#rendererjs)
   * [Installation](#installation)
   * [Core Concepts](#core-concepts)
   * [Quick Start](#quick-start)

@@ -404,6 +404,21 @@ vp.shouldClip(canvasX, canvasY); // => boolean (true if pixel is outside viewpor
 // new BitmapFont(renderer, atlasPath, config = {})
 // config keys: bitmapWidth, bitmapHeight, cellsPerRow, cellsPerColumn,
 //              cellWidth, cellHeight, fontSize, offsetX, offsetY, charOrder
+// use this website: https://lucide.github.io/Font-Atlas-Generator/
+// the default char order follows it:
+/**
+ *     getDefaultCharOrder() {
+        return ' ☺☻♥♦♣♠•◘○◙♂♀♪♫☼►◄↕‼¶§▬↨↑↓→←∟↔▲▼' +
+            ' !"#$%&\'()*+,-./0123456789:;<=>?' +
+            '@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_' +
+            '`abcdefghijklmnopqrstuvwxyz{¦}~⌂' +
+            'ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜ¢£¥₧ƒ' +
+            'áíóúñÑªº¿⌐¬½¼¡«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐' +
+            '└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀' +
+            'αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■□';
+    }
+ **/
+
 const font = new BitmapFont(renderer, "fonts/atlas.png", {
     cellWidth: 32,
     cellHeight: 32,
@@ -447,8 +462,8 @@ import {InputMap} from "tessera.js"
 // InputMap - action mapping & callback helpers
 const im = new InputMap(renderer.input)
 
-im.mapAction(actionName, keys)        // map keyboard keys (string|[string]) -> action
-im.MapMouseAction(actionName, keys)   // map mouse buttons (string|[string]) -> action
+im.mapAction(actionName, keys)        // map keyboard keys (string|[string]) -> action e.g im.mapaction("move_left", ["A", "LeftArrow"])
+im.MapMouseAction(actionName, keys)   // map mouse buttons (string|[string]) -> action  e.g im.mapaction("left_click", [0]) // keys 0, 1, 2, 3, 4, 5 <- see raylib docs
 
 im.isMouseActionActive(actionName)    // => boolean (mouse button down)
 im.isMousePressed(actionName)         // => boolean (mouse button pressed)
@@ -481,10 +496,31 @@ im.cleanup()                          // remove all registered callbacks
 
 ```
 
-### Load Image helper 
+### Image 
 
 ```js
-    renderer.loadImage(path) // @returns {width: number, height: number, format: number, data: Uint8Array}
+renderer.loadImage(path) // @returns {width: number, height: number, format: number, data: Uint8Array}
+
+import {drawAtlasRegionToCanvas, imageToCanvas} from "tessera.js"
+/**
+ * 
+ * @param {{data: Uint8Array, width: number, height: number}} atlas 
+ * @param {{x: number, y: number, width: number, height: number}} srcRect 
+ * @param {{data: Uint8Array, width: number, height: number}} canvas 
+ * @param {{x: number, y: number, width: number, height: number}} destRect 
+ * @param {"bilinear" | "nn"} algorithm - The resizing algorithm: 'bi' for bilinear interpolation or 'nn' for nearest neighbor. Defaults to 'bi'.
+ */
+  drawAtlasRegionToCanvas(atlas, srcRect, canvas, destRect, algorithm = 'bilinear')
+
+   /**
+ * 
+ * @param {{data: Uint8Array, width: number, height: number}} img 
+ * @param {{data: Uint8Array, width: number, height: number}} canvas 
+ * @param {"bilinear" | "nn"} algorithm - The resizing algorithm: 'bilinear' for bilinear interpolation or 'nn' for nearest neighbor. Defaults to 'bi'.
+ * @param {number} destWidth - The destination width. Defaults to canvas.width.
+ * @param {number} destHeight - The destination height. Defaults to canvas.height.
+ */
+   imageToCanvas(img, canvas, algorithm = 'bilinear', destWidth = canvas.width, destHeight = canvas.height)
 ```
 
 ### Utils

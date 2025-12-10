@@ -1,6 +1,8 @@
 
 
 
+
+
 // Helper: extract a rectangular region from a full RGBA buffer
 function extractRegion(data, fullWidth, minX, minY, regionWidth, regionHeight) {
     const rowBytes = regionWidth * 4;
@@ -35,13 +37,13 @@ export class DirtyRegionTracker {
         const y0 = y | 0;
         const x1 = (x + w - 1) | 0;
         const y1 = (y + h - 1) | 0;
-        
+
         // Update extremes (branch prediction friendly: usually all four update)
         if (x0 < this.minX) this.minX = x0;
         if (y0 < this.minY) this.minY = y0;
         if (x1 > this.maxX) this.maxX = x1;
         if (y1 > this.maxY) this.maxY = y1;
-        
+
         this.modified = true;
     }
 
@@ -72,7 +74,7 @@ export class DirtyRegionTracker {
 
         // Extract region data
         const regionData = this._extractRegion(minX, minY, regionWidth, regionHeight);
-        
+
         // Upload to GPU
         this.canvas.renderer.updateBufferData(
             this.canvas.bufferId,
@@ -538,14 +540,14 @@ export class PerformanceMonitor {
         this.frameTimes = [];
         this.samples = 60; // Keep last 60 frames
     }
-    
+
     start(name) {
         this.metrics.set(name, {
             start: performance.now(),
             calls: (this.metrics.get(name)?.calls || 0) + 1
         });
     }
-    
+
     end(name) {
         const metric = this.metrics.get(name);
         if (metric) {
@@ -555,7 +557,7 @@ export class PerformanceMonitor {
             metric.min = Math.min(metric.min || Infinity, duration);
         }
     }
-    
+
     recordFrameTime(startTime) {
         const frameTime = performance.now() - startTime;
         this.frameTimes.push(frameTime);
@@ -563,16 +565,16 @@ export class PerformanceMonitor {
             this.frameTimes.shift();
         }
     }
-    
+
     logMetrics() {
         console.log('Performance Report:');
         for (const [name, metric] of this.metrics) {
             const avg = metric.total / metric.calls;
             console.log(`  ${name}: ${avg.toFixed(2)}ms avg (${metric.min.toFixed(2)}-${metric.max.toFixed(2)}ms)`);
         }
-        
+
         const avgFrameTime = this.frameTimes.reduce((a, b) => a + b) / this.frameTimes.length;
-        console.log(`  Frame Time: ${avgFrameTime.toFixed(2)}ms (${(1000/avgFrameTime).toFixed(1)} FPS)`);
+        console.log(`  Frame Time: ${avgFrameTime.toFixed(2)}ms (${(1000 / avgFrameTime).toFixed(1)} FPS)`);
     }
 }
 
@@ -589,16 +591,178 @@ export class PerformanceMonitor {
  * @returns {{r: number, g: number, b: number, a?: number}} An object with normalized values.
  */
 export function normalizeRGBA(r, g, b, a) {
-  const normalized = {
-    r: r / 255.0,
-    g: g / 255.0,
-    b: b / 255.0
-  };
+    const normalized = {
+        r: r / 255.0,
+        g: g / 255.0,
+        b: b / 255.0
+    };
 
-  // If the 'a' parameter is provided, add the alpha channel (which is already 0.0-1.0 in standard usage)
-  if (typeof a !== 'undefined' && a !== null) {
-    normalized.a = a/255;
-  }
+    // If the 'a' parameter is provided, add the alpha channel (which is already 0.0-1.0 in standard usage)
+    if (typeof a !== 'undefined' && a !== null) {
+        normalized.a = a / 255;
+    }
 
-  return normalized;
+    return normalized;
+}
+
+
+
+// /**
+//  * 
+//  * @param {{data: Uint8Array, width: number, height: number}} img 
+//  * @param {} canvas 
+//  */
+// export function imageToCanvasNN(img, canvas) {
+//     const tracker = new DirtyRegionTracker(canvas)
+//     const cdata = canvas.data;
+//     const idata = img.data;
+//     const srcWidth = img.width;
+//     const srcHeight = img.height;
+//     const destWidth = canvas.width
+//     const destHeight = canvas.height
+//     const scaleX = srcWidth / destWidth;
+//     const scaleY = srcHeight / destHeight;
+
+//     for (let y = 0; y < destHeight; y++) {
+//         for (let x = 0; x < destWidth; x++) {
+//             const srcX = Math.min(Math.floor(x * scaleX), srcWidth - 1);
+//             const srcY = Math.min(Math.floor(y * scaleY), srcHeight - 1);
+//             const idxSrc = (srcY * srcWidth + srcX) * 4;
+//             const idxDest = (y * destWidth + x) * 4;
+
+//             cdata[idxDest] = idata[idxSrc];
+//             cdata[idxDest + 1] = idata[idxSrc + 1];
+//             cdata[idxDest + 2] = idata[idxSrc + 2];
+//             cdata[idxDest + 3] = idata[idxSrc + 3];
+//         }
+//     }
+
+//     tracker.markRect(0, 0, canvas.width, canvas.height);
+//     tracker.flush();
+//     canvas.upload();
+// }
+
+
+/**
+ * 
+ * @param {{data: Uint8Array, width: number, height: number}} img 
+ * @param {{data: Uint8Array, width: number, height: number}} canvas 
+ * @param {"bilinear" | "nn"} algorithm - The resizing algorithm: 'bilinear' for bilinear interpolation or 'nn' for nearest neighbor. Defaults to 'bi'.
+ * @param {number} destWidth - The destination width. Defaults to canvas.width.
+ * @param {number} destHeight - The destination height. Defaults to canvas.height.
+ */
+export function imageToCanvas(img, canvas, algorithm = 'bilinear', destWidth = canvas.width, destHeight = canvas.height) {
+    const tracker = new DirtyRegionTracker(canvas);
+    const cdata = canvas.data;
+    const idata = img.data;
+    const srcWidth = img.width;
+    const srcHeight = img.height;
+    const scaleX = srcWidth / destWidth;
+    const scaleY = srcHeight / destHeight;
+
+    for (let y = 0; y < destHeight; y++) {
+        for (let x = 0; x < destWidth; x++) {
+            const idxDest = (y * destWidth + x) * 4;
+
+            if (algorithm === 'nn') {
+          
+                const srcX = Math.floor((x + 0.5) * scaleX);
+                const srcY = Math.floor((y + 0.5) * scaleY);
+                const clampedX = Math.max(0, Math.min(srcX, srcWidth - 1));
+                const clampedY = Math.max(0, Math.min(srcY, srcHeight - 1));
+                for (let c = 0; c < 4; c++) {
+                    cdata[idxDest + c] = idata[(clampedY * srcWidth + clampedX) * 4 + c];
+                }
+            } else {
+
+                const srcX = (x + 0.5) * scaleX - 0.5;
+                const srcY = (y + 0.5) * scaleY - 0.5;
+                const x1 = Math.floor(srcX);
+                const y1 = Math.floor(srcY);
+                const x2 = Math.min(x1 + 1, srcWidth - 1);
+                const y2 = Math.min(y1 + 1, srcHeight - 1);
+                const dx = srcX - x1;
+                const dy = srcY - y1;
+
+                for (let c = 0; c < 4; c++) { 
+                    const p11 = idata[(y1 * srcWidth + x1) * 4 + c];
+                    const p12 = idata[(y1 * srcWidth + x2) * 4 + c];
+                    const p21 = idata[(y2 * srcWidth + x1) * 4 + c];
+                    const p22 = idata[(y2 * srcWidth + x2) * 4 + c];
+                    const interpX1 = p11 * (1 - dx) + p12 * dx;
+                    const interpX2 = p21 * (1 - dx) + p22 * dx;
+                    const interp = interpX1 * (1 - dy) + interpX2 * dy;
+                    cdata[idxDest + c] = Math.round(interp);
+                }
+            }
+        }
+    }
+
+    tracker.markRect(0, 0, destWidth, destHeight);
+    tracker.flush();
+    canvas.upload();
+}
+
+
+/**
+ * 
+ * @param {{data: Uint8Array, width: number, height: number}} atlas 
+ * @param {{x: number, y: number, width: number, height: number}} srcRect 
+ * @param {{data: Uint8Array, width: number, height: number}} canvas 
+ * @param {{x: number, y: number, width: number, height: number}} destRect 
+ * @param {"bilinear" | "nn"} algorithm - The resizing algorithm: 'bi' for bilinear interpolation or 'nn' for nearest neighbor. Defaults to 'bi'.
+ */
+export function drawAtlasRegionToCanvas(atlas, srcRect, canvas, destRect, algorithm = 'bilinear') {
+    const tracker = new DirtyRegionTracker(canvas);
+    const cdata = canvas.data;
+    const adata = atlas.data;
+    const atlasWidth = atlas.width;
+    const srcWidth = srcRect.width;
+    const srcHeight = srcRect.height;
+    const destWidth = destRect.width;
+    const destHeight = destRect.height;
+    const scaleX = srcWidth / destWidth;
+    const scaleY = srcHeight / destHeight;
+
+    for (let dy = 0; dy < destHeight; dy++) {
+        for (let dx = 0; dx < destWidth; dx++) {
+            const idxDest = ((dy + destRect.y) * canvas.width + (dx + destRect.x)) * 4;
+
+            if (algorithm === 'nn') {
+                // Nearest neighbor interpolation
+                const srcX = srcRect.x + Math.floor((dx + 0.5) * scaleX);
+                const srcY = srcRect.y + Math.floor((dy + 0.5) * scaleY);
+                const clampedX = Math.max(srcRect.x, Math.min(srcX, srcRect.x + srcWidth - 1));
+                const clampedY = Math.max(srcRect.y, Math.min(srcY, srcRect.y + srcHeight - 1));
+                for (let c = 0; c < 4; c++) { // RGBA channels
+                    cdata[idxDest + c] = adata[(clampedY * atlasWidth + clampedX) * 4 + c];
+                }
+            } else {
+                // Bilinear interpolation (default)
+                const srcX = srcRect.x + (dx + 0.5) * scaleX - 0.5;
+                const srcY = srcRect.y + (dy + 0.5) * scaleY - 0.5;
+                const x1 = Math.floor(srcX);
+                const y1 = Math.floor(srcY);
+                const x2 = Math.min(x1 + 1, atlasWidth - 1);
+                const y2 = Math.min(y1 + 1, atlas.height - 1);
+                const dxFrac = srcX - x1;
+                const dyFrac = srcY - y1;
+
+                for (let c = 0; c < 4; c++) { // RGBA channels
+                    const p11 = adata[(y1 * atlasWidth + x1) * 4 + c];
+                    const p12 = adata[(y1 * atlasWidth + x2) * 4 + c];
+                    const p21 = adata[(y2 * atlasWidth + x1) * 4 + c];
+                    const p22 = adata[(y2 * atlasWidth + x2) * 4 + c];
+                    const interpX1 = p11 * (1 - dxFrac) + p12 * dxFrac;
+                    const interpX2 = p21 * (1 - dxFrac) + p22 * dxFrac;
+                    const interp = interpX1 * (1 - dyFrac) + interpX2 * dyFrac;
+                    cdata[idxDest + c] = Math.round(interp);
+                }
+            }
+        }
+    }
+
+    tracker.markRect(destRect.x, destRect.y, destRect.width, destRect.height);
+    tracker.flush();
+    canvas.upload();
 }

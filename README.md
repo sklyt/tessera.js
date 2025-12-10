@@ -462,7 +462,7 @@ import {InputMap} from "tessera.js"
 // InputMap - action mapping & callback helpers
 const im = new InputMap(renderer.input)
 
-im.mapAction(actionName, keys)        // map keyboard keys (string|[string]) -> action e.g im.mapaction("move_left", ["A", "LeftArrow"])
+im.mapAction(actionName, keys)        // map keyboard keys (string|[string]) -> action e.g im.mapAction("move_left", ["A", "ArrowLeft"]);
 im.MapMouseAction(actionName, keys)   // map mouse buttons (string|[string]) -> action  e.g im.mapaction("left_click", [0]) // keys 0, 1, 2, 3, 4, 5 <- see raylib docs
 
 im.isMouseActionActive(actionName)    // => boolean (mouse button down)

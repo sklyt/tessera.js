@@ -4,7 +4,7 @@ import { terser } from 'rollup-plugin-terser';
 
 export default {
   input: 'src/index.js',
-  plugins: [ resolve(), commonjs() ],
+  plugins: [ resolve(), commonjs(), terser() ],
   external: [], // list external packages here (keep peer deps external)
   output: [
     {

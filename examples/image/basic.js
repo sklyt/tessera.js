@@ -25,6 +25,7 @@ const img = renderer.loadImage(join(__dirname, "./1.png"))  // fails to load jpg
 imageToCanvas(img, canvas, "nn", 400, 400)
 drawAtlasRegionToCanvas(img, {x: 0, y: 0, width:58, height:58}, canvas, {x: 400, y: 100, width: 32, height: 32})
 canvas.upload()
+
 renderer.onRender(() => {
     renderer.clear(normalizeRGBA(40, 40, 50, 255)) // clears the window not canvas
     // canvas.clear(40, 40, 50, 255) <- clears the pixels 

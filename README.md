@@ -588,6 +588,10 @@ import {drawAtlasRegionToCanvas, imageToCanvas} from "tessera.js"
  * @param {number} destHeight - The destination height. Defaults to canvas.height.
  */
    imageToCanvas(img, canvas, algorithm = 'bilinear', destWidth = canvas.width, destHeight = canvas.height)
+
+
+
+export function genFrames(rows, cols, startX, startY, tileSize) // utility for spritesheet to frames
 ```
 
 ### Utils

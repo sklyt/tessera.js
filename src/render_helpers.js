@@ -766,3 +766,23 @@ export function drawAtlasRegionToCanvas(atlas, srcRect, canvas, destRect, algori
     tracker.flush();
     // canvas.upload();
 }
+
+
+/**
+ * utility for spritesheet to frames
+ * @param {number} rows 
+ * @param {number} cols 
+ * @param {number} startX 
+ * @param {number} startY 
+ * @param {number} tileSize 
+ * @returns {Array<{offset: {x: number, y: number}>}
+ */
+export function genFrames(rows, cols, startX, startY, tileSize) {
+    const frames = [];
+    for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+            frames.push({ offset: { x: startX + c * tileSize, y: startY + r * tileSize } });
+        }
+    }
+    return frames;
+}

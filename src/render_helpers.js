@@ -700,7 +700,7 @@ export function imageToCanvas(img, canvas, algorithm = 'bilinear', destWidth = c
 
     tracker.markRect(0, 0, destWidth, destHeight);
     tracker.flush();
-    canvas.upload();
+    // canvas.upload();
 }
 
 
@@ -764,5 +764,5 @@ export function drawAtlasRegionToCanvas(atlas, srcRect, canvas, destRect, algori
 
     tracker.markRect(destRect.x, destRect.y, destRect.width, destRect.height);
     tracker.flush();
-    canvas.upload();
+    // canvas.upload();
 }

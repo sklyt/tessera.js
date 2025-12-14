@@ -14,11 +14,22 @@ export class PixelBuffer {
 
         const size = width * height * 4; // RGBA = 4 bytes per pixel
 
-        // Create shared buffer between JS and C++
+        // get's copy of buffer from C++, not shared because of ownership complexity and double buffering in c++ side
         this.bufferId = renderer.createSharedBuffer(size, width, height);
 
-        // Get JS view of the buffer data
-        this.data = renderer.getBufferData(this.bufferId);
+        {
+            /**
+            * @type {Uint8Array}
+             */
+            let temp = renderer.getBufferData(this.bufferId);
+            /**
+             * @type {Uint8Array}
+             */
+            this.data = new Uint8Array(new SharedArrayBuffer(size));
+            this.data.set(new Uint8Array(temp));
+            temp = null;
+        }
+
 
         // Create GPU texture for this buffer
         this.textureId = renderer.loadTextureFromBuffer(this.bufferId, width, height);
@@ -160,7 +171,9 @@ export class PixelBuffer {
 
         // Create new shared buffer + JS view + texture
         const newBufferId = this.renderer.createSharedBuffer(newSize, newWidth, newHeight);
-        const newData = this.renderer.getBufferData(newBufferId);
+        const newBuffer = this.renderer.getBufferData(newBufferId);
+        const newData = new Uint8Array(new SharedArrayBuffer(newSize));
+        newData.set(new Uint8Array(newBuffer));
         const newTextureId = this.renderer.loadTextureFromBuffer(newBufferId, newWidth, newHeight);
 
         // Copy overlapping region from old buffer to new buffer

@@ -1,9 +1,8 @@
-// ui.js
-
 import {PolygonDrawer} from "../polygon.js"
 import {ShapeDrawer} from "../shapes.js"
 /**
  * Base UI Element
+ * DO not use will re-write buggy
  */
 export class UIElement {
     constructor(x, y, width, height) {

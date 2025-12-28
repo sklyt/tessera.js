@@ -46,7 +46,7 @@ Every abstraction in this library builds from this primitive.
 ## Quick Start
 
 ```js
-import { loadRenderer, PixelBuffer, Texture, DirtyRegionTracker } from "tessera.js";
+import { loadRenderer, PixelBuffer, DirtyRegionTracker } from "tessera.js";
 
 const { Renderer, FULLSCREEN, RESIZABLE } = loadRenderer();
 

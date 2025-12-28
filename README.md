@@ -594,6 +594,49 @@ import {drawAtlasRegionToCanvas, imageToCanvas} from "tessera.js"
 export function genFrames(rows, cols, startX, startY, tileSize) // utility for spritesheet to frames
 ```
 
+### Sound 
+
+```
+
+loadSound(filePath)               // => SoundHandle (number) | 0 on failure
+                                  // example: const h = renderer.audio.loadSound("/path/sfx.wav");
+
+loadSoundFromMemory(fileType, buffer)
+                                  // fileType: ".wav"|".ogg"|".mp3" etc
+                                  // buffer: Node Buffer | ArrayBuffer | TypedArray | SharedArrayBuffer
+                                  // => SoundHandle | 0 on failure
+                                  // example: const buf = fs.readFileSync("click.wav"); renderer.audio.loadSoundFromMemory(".wav", buf);
+
+playSound(handle)                 // play a loaded sound (SFX)
+stopSound(handle)                 // stop playback of sound
+pauseSound(handle)                // pause sound
+resumeSound(handle)               // resume paused sound
+setSoundVolume(handle, volume)    // volume 0..1 (multiplied by masterVolume)
+isSoundPlaying(handle)            // => boolean
+unloadSound(handle)               // free sound resources
+
+loadMusic(filePath)               // => MusicHandle | 0 on failure (streamed)
+loadMusicFromMemory(fileType, buffer)
+                                  // => MusicHandle | 0 on failure (streamed from bytes)
+playMusic(handle)                 // start playing streamed music
+stopMusic(handle)                 // stop and reset music stream
+pauseMusic(handle)                // pause stream
+resumeMusic(handle)               // resume stream
+setMusicVolume(handle, volume)    // volume 0..1 (multiplied by masterVolume)
+isMusicPlaying(handle)            // => boolean
+unloadMusic(handle)               // free stream resources
+
+setMasterVolume(volume)           // global master volume 0..1 (affects created sounds/music)
+getMasterVolume()                 // => number
+
+Notes:
+- load*FromMemory accepts Node Buffers, ArrayBuffers, TypedArrays, SharedArrayBuffers.
+- All load* functions return 0 on failure. Check result before calling play*.
+- For music streams you should call renderer.step() or your per-frame update so the underlying stream gets updated (the wrapper will call UpdateMusicStream internally if needed).
+- Call unload* when done to avoid leaks.
+
+```
+
 ### Utils
 
 

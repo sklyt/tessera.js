@@ -75,10 +75,282 @@ class Input_ {
 }
 
 
+
+class Audio_ {
+    constructor() { }
+
+    /**
+     * Initialize audio device
+     * @returns {boolean}
+     */
+    initialize() { }
+
+    /**
+     * Shutdown audio device and free resources
+     * @returns {void}
+     */
+    shutdown() { }
+
+    /**
+     * Load sound from disk
+     * @param {string} filePath
+     * @returns {number} handle (0 on failure)
+     */
+    loadSound(filePath) { }
+
+    /**
+     * Load sound from memory buffer
+     * @param {string} fileType - e.g. '.wav' or '.ogg' (leading dot accepted/required by backend)
+     * @param {Buffer|ArrayBuffer|TypedArray|SharedArrayBuffer} buffer
+     * @returns {number} handle (0 on failure)
+     */
+    loadSoundFromMemory(fileType, buffer) { }
+
+    /**
+     * Play a loaded sound (one-shot)
+     * @param {number} handle
+     * @returns {void}
+     */
+    playSound(handle) { }
+
+    /**
+     * Stop a sound
+     * @param {number} handle
+     * @returns {void}
+     */
+    stopSound(handle) { }
+
+    /**
+     * Pause a sound
+     * @param {number} handle
+     * @returns {void}
+     */
+    pauseSound(handle) { }
+
+    /**
+     * Resume a paused sound
+     * @param {number} handle
+     * @returns {void}
+     */
+    resumeSound(handle) { }
+
+    /**
+     * Set per-sound volume (0..1) multiplied by master volume internally
+     * @param {number} handle
+     * @param {number} volume
+     * @returns {void}
+     */
+    setSoundVolume(handle, volume) { }
+
+    /**
+     * Query whether a sound is playing
+     * @param {number} handle
+     * @returns {boolean}
+     */
+    isSoundPlaying(handle) { }
+
+    /**
+     * Unload sound and free resources
+     * @param {number} handle
+     * @returns {void}
+     */
+    unloadSound(handle) { }
+
+    /**
+     * Register callback for sound end (fired once when the sound finishes)
+     * @param {number} handle
+     * @param {(handle: number) => void} callback
+     * @returns {void}
+     */
+    onSoundEnd(handle, callback) { }
+
+    /**
+     * Load music (streamed) from disk
+     * @param {string} filePath
+     * @returns {number} handle (0 on failure)
+     */
+    loadMusic(filePath) { }
+
+    /**
+     * Load music (streamed) from memory
+     * @param {string} fileType
+     * @param {Buffer|ArrayBuffer|TypedArray|SharedArrayBuffer} buffer
+     * @returns {number} handle (0 on failure)
+     */
+    loadMusicFromMemory(fileType, buffer) { }
+
+    /**
+     * Play music stream
+     * @param {number} handle
+     * @returns {void}
+     */
+    playMusic(handle) { }
+
+    /**
+     * Stop music stream
+     * @param {number} handle
+     * @returns {void}
+     */
+    stopMusic(handle) { }
+
+    /**
+     * Pause music stream
+     * @param {number} handle
+     * @returns {void}
+     */
+    pauseMusic(handle) { }
+
+    /**
+     * Resume music stream
+     * @param {number} handle
+     * @returns {void}
+     */
+    resumeMusic(handle) { }
+
+    /**
+     * Set music volume (0..1) multiplied by master volume
+     * @param {number} handle
+     * @param {number} volume
+     * @returns {void}
+     */
+    setMusicVolume(handle, volume) { }
+
+    /**
+     * Query whether music is playing
+     * @param {number} handle
+     * @returns {boolean}
+     */
+    isMusicPlaying(handle) { }
+
+    /**
+     * Unload music stream and free resources
+     * @param {number} handle
+     * @returns {void}
+     */
+    unloadMusic(handle) { }
+
+    /**
+     * Register callback fired when music stream ends
+     * @param {number} handle
+     * @param {(handle: number) => void} callback
+     * @returns {void}
+     */
+    onMusicEnd(handle, callback) { }
+
+    /**
+     * Create a low-level audio stream for procedural audio
+     * @param {number} sampleRate
+     * @param {number} sampleSizeBits
+     * @param {number} channels
+     * @returns {number} streamHandle
+     */
+    loadAudioStream(sampleRate, sampleSizeBits, channels) { }
+
+    /**
+     * Update an audio stream by pushing PCM frames (interleaved)
+     * @param {number} streamHandle
+     * @param {Buffer|Float32Array|Int16Array} data - frames * channels samples
+     * @param {number} frameCount
+     * @returns {void}
+     */
+    updateAudioStream(streamHandle, data, frameCount) { }
+
+    /**
+     * Play an audio stream
+     * @param {number} streamHandle
+     * @returns {void}
+     */
+    playAudioStream(streamHandle) { }
+
+    /**
+     * Pause an audio stream
+     * @param {number} streamHandle
+     * @returns {void}
+     */
+    pauseAudioStream(streamHandle) { }
+
+    /**
+     * Resume an audio stream
+     * @param {number} streamHandle
+     * @returns {void}
+     */
+    resumeAudioStream(streamHandle) { }
+
+    /**
+     * Stop an audio stream
+     * @param {number} streamHandle
+     * @returns {void}
+     */
+    stopAudioStream(streamHandle) { }
+
+    /**
+     * Set per-stream volume
+     * @param {number} streamHandle
+     * @param {number} volume
+     * @returns {void}
+     */
+    setAudioStreamVolume(streamHandle, volume) { }
+
+    /**
+     * Attach a processor callback to a specific stream
+     * @param {number} streamHandle
+     * @param {(bufferData: Float32Array, frames: number) => void} processor
+     * @returns {void}
+     */
+    attachAudioStreamProcessor(streamHandle, processor) { }
+
+    /**
+     * Detach a previously attached stream processor
+     * @param {number} streamHandle
+     * @param {(bufferData: Float32Array, frames: number) => void} processor
+     * @returns {void}
+     */
+    detachAudioStreamProcessor(streamHandle, processor) { }
+
+    /**
+     * Attach a global mixed audio processor (receives mixed frames)
+     * @param {(bufferData: Float32Array, frames: number) => void} processor
+     * @returns {void}
+     */
+    attachAudioMixedProcessor(processor) { }
+
+    /**
+     * Detach a global mixed audio processor
+     * @param {(bufferData: Float32Array, frames: number) => void} processor
+     * @returns {void}
+     */
+    detachAudioMixedProcessor(processor) { }
+
+    /**
+     * Set default buffer size (frames) for new audio streams
+     * @param {number} size
+     * @returns {void}
+     */
+    setAudioStreamBufferSizeDefault(size) { }
+
+    /**
+     * Set master volume (0..1)
+     * @param {number} volume
+     * @returns {void}
+     */
+    setMasterVolume(volume) { }
+
+    /**
+     * Get master volume
+     * @returns {number}
+     */
+    getMasterVolume() { }
+}
+
+
+
 export class Renderer {
     constructor() {
         /** @type {Input_} */
         this.input = new Input_();
+
+        /** @type {Audio_} */
+        this.audio = new Audio_()
         /** @type {number} */
         this.targetFPS = 60;
     }

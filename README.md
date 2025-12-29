@@ -397,17 +397,17 @@ vp.shouldClip(canvasX, canvasY); // => boolean (true if pixel is outside viewpor
 
 #### Font
 
-```js
+```
 // BitmapFont - simple API (bitmap atlas text rendering)
-
 // Constructor
 // new BitmapFont(renderer, atlasPath, config = {})
 // config keys: bitmapWidth, bitmapHeight, cellsPerRow, cellsPerColumn,
-//              cellWidth, cellHeight, fontSize, offsetX, offsetY, charOrder
+// cellWidth, cellHeight, fontSize, offsetX, offsetY, charOrder,
+// lineHeight, lineGap, charSpacing
 // use this website: https://lucide.github.io/Font-Atlas-Generator/
 // the default char order follows it:
 /**
- *     getDefaultCharOrder() {
+ * getDefaultCharOrder() {
         return ' ☺☻♥♦♣♠•◘○◙♂♀♪♫☼►◄↕‼¶§▬↨↑↓→←∟↔▲▼' +
             ' !"#$%&\'()*+,-./0123456789:;<=>?' +
             '@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_' +
@@ -418,29 +418,44 @@ vp.shouldClip(canvasX, canvasY); // => boolean (true if pixel is outside viewpor
             'αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■□';
     }
  **/
-
 const font = new BitmapFont(renderer, "fonts/atlas.png", {
     cellWidth: 32,
     cellHeight: 32,
 });
 
+
+
 // Properties
 font.renderer; // Renderer instance used to load atlas
 font.atlasImage; // { data: Uint8Array, width, height }
-font.config; // resolved config object
+font.config; // resolved config object:
+           this.config = {
+            bitmapWidth: config.bitmapWidth || this.atlasImage.width,
+            bitmapHeight: config.bitmapHeight || this.atlasImage.height,
+            cellsPerRow: config.cellsPerRow || 16,
+            cellsPerColumn: config.cellsPerColumn || 16,
+            cellWidth: config.cellWidth || 32,
+            cellHeight: config.cellHeight || 32,
+            fontSize: config.fontSize || 16,
+            offsetX: config.offsetX || 0,
+            offsetY: config.offsetY || 0,
+            charOrder: config.charOrder || this.getDefaultCharOrder(),
+            lineHeight: config.lineHeight || config.cellHeight,
+            lineGap: config.lineGap || 0,      // Extra space between lines
+            charSpacing: config.charSpacing || 0  // Extra space between characters
+        };
+  
 font.glyphs; // Map<char, Glyph>
 font.lineHeight; // number
 font.baseline; // number
-
 // Glyph (internal structure)
 class Glyph {
     // fields: char, x, y, width, height, xOffset, yOffset, xAdvance
 }
-
 // Lookup, measurement & drawing
 font.getGlyph(char); // => Glyph (with fallback)
 font.measureText(text); // => { width: number, height: number }
-font.drawText(canvas, text, x, y, color = { r, g, b, a }, camera = undefined); //  draws text into PixelBuffer (alpha blended). Commits minimal region and sets canvas.needsUpload to true
+font.drawText(canvas, text, x, y, color = { r: 255, g: 255, b: 255, a: 255 }, scale = 1.0, camera = undefined); // draws text into PixelBuffer (alpha blended). Commits minimal region and sets canvas.needsUpload to true
 font.drawMultilineText(
     canvas,
     text,
@@ -449,11 +464,11 @@ font.drawMultilineText(
     maxWidth,
     align = "left",
     color = { r: 255, g: 255, b: 255, a: 255 },
+    scale = 1.0,
     camera = undefined,
-); //   draws wrapped lines; returns { width, height }
-font.drawTextWithTint(canvas, text, x, y, r, g, b, a = 255, camera = undefined);
+); // draws wrapped lines; returns { width, height }
+font.drawTextWithTint(canvas, text, x, y, r, g, b, a = 255, scale = 1.0, camera = undefined);
 ```
-
 ### Input 
 
 ```js

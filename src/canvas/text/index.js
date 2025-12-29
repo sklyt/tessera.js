@@ -45,11 +45,15 @@ export class BitmapFont {
             fontSize: config.fontSize || 16,
             offsetX: config.offsetX || 0,
             offsetY: config.offsetY || 0,
-            charOrder: config.charOrder || this.getDefaultCharOrder()
+            charOrder: config.charOrder || this.getDefaultCharOrder(),
+            lineHeight: config.lineHeight || config.cellHeight,
+            lineGap: config.lineGap || 0,      // Extra space between lines
+            charSpacing: config.charSpacing || 0  // Extra space between characters
         };
 
 
         this.glyphs = new Map();
+        this.scaledGlyphCache = new Map();
         this.buildGlyphMap();
 
 
@@ -108,10 +112,10 @@ export class BitmapFont {
      */
     getGlyph(char) {
         let glyph = this.glyphs.get(char);
-        
+
         if (!glyph) {
 
-            if(glyph == "\n"){
+            if (glyph == "\n") {
                 return this.glyphs.get(' ')
             }
 
@@ -129,15 +133,18 @@ export class BitmapFont {
 
         for (let i = 0; i < text.length; i++) {
             const glyph = this.getGlyph(text[i]);
-            width += glyph.xAdvance;
+            width += glyph.xAdvance + this.config.charSpacing;
+        }
+
+        if (text.length > 0) {
+            width -= this.config.charSpacing;  // Don't add spacing after last char
         }
 
         return { width, height: this.lineHeight };
     }
 
     /**
-     *
-     draw text to canvas buffer
+     * draw text to canvas buffer
      this copies glyph pixels from atlas to canvas
      * @param {PixelBuffer} canvas 
      * @param {string} text 
@@ -146,7 +153,7 @@ export class BitmapFont {
      * @param {r: 255, g: 255, b: 255, a: 255}} color 
      * @returns 
      */
-    drawText(canvas, text, x, y, color = { r: 255, g: 255, b: 255, a: 255 }, camera = undefined) {
+    drawText(canvas, text, x, y, color = { r: 255, g: 255, b: 255, a: 255 }, scale = 1.0, camera = undefined) {
         // const startTime = performance.now();
 
         let cursorX = x;
@@ -164,27 +171,54 @@ export class BitmapFont {
 
         for (let i = 0; i < text.length; i++) {
             const char = text[i];
-
+            const glyph = this.getGlyph(char);
             // Skip spaces (don't draw, just advance)
             if (char === ' ') {
-                cursorX += this.getGlyph(char).xAdvance;
+                cursorX += (glyph.xAdvance + this.config.charSpacing) * scale;
                 continue;
+
             }
 
-            const glyph = this.getGlyph(char);
 
-            const destX = Math.floor(cursorX + glyph.xOffset);
-            const destY = Math.floor(cursorY + glyph.yOffset);
 
-            // Track bounding box
-            // minX = Math.min(minX, destX);
-            // minY = Math.min(minY, destY);
-            // maxX = Math.max(maxX, destX + glyph.width);
-            // maxY = Math.max(maxY, destY + glyph.height);
+            const destX = Math.floor(cursorX + glyph.xOffset * scale);
+            const destY = Math.floor(cursorY + glyph.yOffset * scale);
+            const scaledWidth = Math.floor(glyph.width * scale);
+            const scaledHeight = Math.floor(glyph.height * scale);
+
+            // Cache scaled glyph alphas
+            const key = `${glyph.char}_${scale}`;
+            if (!this.scaledGlyphCache.has(key)) {
+                const scaledAlphas = new Uint8Array(scaledWidth * scaledHeight);
+                for (let gy = 0; gy < scaledHeight; gy++) {
+                    for (let gx = 0; gx < scaledWidth; gx++) {
+                        const atlasX = glyph.x + Math.floor(gx / scale);
+                        const atlasY = glyph.y + Math.floor(gy / scale);
+                        if (atlasX >= glyph.x + glyph.width || atlasY >= glyph.y + glyph.height) {
+                            scaledAlphas[gy * scaledWidth + gx] = 0;
+                            continue;
+                        }
+                        const atlasIdx = (atlasY * atlasWidth + atlasX) * 4;
+                        const atlasR = atlasData[atlasIdx + 0];
+                        const atlasG = atlasData[atlasIdx + 1];
+                        const atlasB = atlasData[atlasIdx + 2];
+                        const atlasA = atlasData[atlasIdx + 3];
+                        if (atlasA === 0) {
+                            scaledAlphas[gy * scaledWidth + gx] = 0;
+                            continue;
+                        }
+                        const intensity = (atlasR + atlasG + atlasB) / 3;
+                        const alpha = (intensity / 255) * (atlasA / 255);
+                        scaledAlphas[gy * scaledWidth + gx] = Math.floor(alpha * 255);
+                    }
+                }
+                this.scaledGlyphCache.set(key, scaledAlphas);
+            }
+            const scaledAlphas = this.scaledGlyphCache.get(key);
 
             // Copy glyph pixels from atlas to canvas
-            for (let gy = 0; gy < glyph.height; gy++) {
-                for (let gx = 0; gx < glyph.width; gx++) {
+            for (let gy = 0; gy < scaledHeight; gy++) {
+                for (let gx = 0; gx < scaledWidth; gx++) {
                     const px = destX + gx;
                     const py = destY + gy;
 
@@ -192,24 +226,8 @@ export class BitmapFont {
                     if (px < 0 || px >= canvasWidth || py < 0 || py >= canvasHeight) continue;
 
                     if (!shouldDrawPixel(px, py, canvas, camera)) continue;
-                    // Sample from atlas
-                    const atlasX = glyph.x + gx;
-                    const atlasY = glyph.y + gy;
-                    const atlasIdx = (atlasY * atlasWidth + atlasX) * 4;
 
-                    // Get atlas pixel
-                    const atlasR = atlasData[atlasIdx + 0];
-                    const atlasG = atlasData[atlasIdx + 1];
-                    const atlasB = atlasData[atlasIdx + 2];
-                    const atlasA = atlasData[atlasIdx + 3];
-
-                    // Skip fully transparent pixels
-                    if (atlasA === 0) continue;
-
-                    // Use atlas as alpha mask: white = opaque, black = transparent
-                    // Assuming font is white-on-transparent
-                    const intensity = (atlasR + atlasG + atlasB) / 3;
-                    const alpha = (intensity / 255) * (atlasA / 255) * (color.a / 255);
+                    const alpha = (scaledAlphas[gy * scaledWidth + gx] / 255) * (color.a / 255);
 
                     if (alpha < 0.01) continue; // Skip nearly transparent
 
@@ -232,7 +250,7 @@ export class BitmapFont {
             }
 
             // Advance cursor
-            cursorX += glyph.xAdvance;
+            cursorX += (glyph.xAdvance + this.config.charSpacing) * scale;
         }
 
         // Update canvas region
@@ -339,7 +357,7 @@ export class BitmapFont {
             }
 
             this.drawText(canvas, line, lineX, currentY, color, camera);
-            currentY += this.lineHeight;
+            currentY += this.lineHeight + this.config.lineGap;
         });
 
         return {

@@ -4,3 +4,4 @@ examples_dirty
 examples/**/*.json
 src/learningcanvas
 notes
+.sea-cache/

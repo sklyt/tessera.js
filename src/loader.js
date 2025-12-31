@@ -1,8 +1,95 @@
 import { fileURLToPath } from 'url';
- import { dirname, join } from 'path'; 
- import { createRequire } from 'module'; 
-const __filename = fileURLToPath(import.meta.url);
- const __dirname = dirname(__filename);
+import { dirname, join } from 'path';
+import { createRequire } from 'module';
+import os from "node:os"
+import fs from "node:fs"
+import path from "node:path"
+
+// Use a function to safely get these values
+const getModulePaths = () => {
+    try {
+        // Try ESM first
+        if (typeof import.meta !== 'undefined' && import.meta.url) {
+            const filename = fileURLToPath(import.meta.url);
+            return {
+                __filename: filename,
+                __dirname: dirname(filename),
+                require: createRequire(import.meta.url)
+            };
+        }
+    } catch (e) {
+        // Fall through to CJS
+    }
+    
+    // CJS fallback
+    return {
+        __filename: typeof __filename !== 'undefined' ? __filename : '',
+        __dirname: typeof __dirname !== 'undefined' ? __dirname : '',
+        require: typeof require !== 'undefined' ? require : () => { throw new Error('require not available'); }
+    };
+};
+
+const { __filename: moduleFilename, __dirname: moduleDirname } = getModulePaths();
+const __filename = moduleFilename;
+const __dirname = moduleDirname;
+
+
+function bufferFromAsset(a) {
+    if (!a) return null;
+    if (Buffer.isBuffer(a)) return a;
+    if (a instanceof ArrayBuffer) return Buffer.from(a);
+    if (ArrayBuffer.isView(a)) return Buffer.from(a.buffer, a.byteOffset, a.byteLength);
+    if (typeof a === 'string') return Buffer.from(a, 'utf8');
+    throw new TypeError('Unsupported asset type: ' + typeof a);
+}
+
+function writeFileAtomicSync(dest, buf) {
+    const tmp = `${dest}.${crypto.randomUUID()}.tmp`;
+    fs.writeFileSync(tmp, buf);
+    fs.renameSync(tmp, dest);
+}
+
+function ensureDirSync(dir) {
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+}
+
+function prependPathForLibraries(dir) {
+    if (process.platform === 'win32') {
+        process.env.PATH = `${dir};${process.env.PATH || ''}`;
+    } else if (process.platform === 'linux') {
+        process.env.LD_LIBRARY_PATH = `${dir}:${process.env.LD_LIBRARY_PATH || ''}`;
+    } else if (process.platform === 'darwin') {
+        process.env.DYLD_LIBRARY_PATH = `${dir}:${process.env.DYLD_LIBRARY_PATH || ''}`;
+    }
+
+}
+
+function createRunTempDir(prefix = 'assets-extract') {
+    const root = path.join(os.tmpdir(), prefix);
+    ensureDirSync(root);
+    // reuse per-process id so repeated requires in same process reuse files:
+    const runId = process.env.ASSETS_EXTRACT_RUN_ID || (process.env.ASSETS_EXTRACT_RUN_ID = `${process.pid}-${crypto.randomUUID()}`);
+    const dir = path.join(root, runId);
+    ensureDirSync(dir);
+    return dir;
+}
+
+function cleanupDirBestEffort(dir) {
+    try {
+        // attempt to remove files first (ignore failures)
+        if (fs.existsSync(dir)) {
+            for (const f of fs.readdirSync(dir)) {
+                const p = path.join(dir, f);
+                try { fs.unlinkSync(p); } catch (e) { /* ignore */ }
+            }
+            try { fs.rmdirSync(dir); } catch (e) { /* ignore */ }
+        }
+    } catch (e) {
+        // ignore
+        console.log(e)
+    }
+}
+
 
 /**
  * @typedef {{ x: number, y: number }} Vec2
@@ -501,8 +588,8 @@ export class Renderer {
      * @param {number} y 
      * @param {number} width  
      * @param {number} height
-     * */ 
-    markBufferRegionDirty(bufferId, x, y,width, height){}
+     * */
+    markBufferRegionDirty(bufferId, x, y, width, height) { }
 
     /**
      * Is the shared buffer dirty?
@@ -528,7 +615,7 @@ export class Renderer {
      * @param {number} height
      * @returns {void}
      */
-    updateBufferData(bufferId, data, x =0, y=0, width=0, height = 0) { }
+    updateBufferData(bufferId, data, x = 0, y = 0, width = 0, height = 0) { }
 
     /**
      * Upload an existing shared buffer to a GPU texture.
@@ -560,17 +647,17 @@ export class Renderer {
     drawTextureSized(textureId, x, y, width, height, colorObj) { }
 
 
-   /**
-     * Draw a texture sized to a destination rectangle
-     * @param {TextureId} textureId
-     * @param {{x:number, y: number}} srcPos
-     * @param {{x: number, y: number}} srcSize
-     * @param {{x: number, y: number}} destPos
-     * @param {{x: number, y: number}} destSize
-     * @param {Object=} colorObj optional
-     * @returns {void}
-     */
-    drawTexturePro(textureId, srcPos, srcSize, destPos, destSize){}
+    /**
+      * Draw a texture sized to a destination rectangle
+      * @param {TextureId} textureId
+      * @param {{x:number, y: number}} srcPos
+      * @param {{x: number, y: number}} srcSize
+      * @param {{x: number, y: number}} destPos
+      * @param {{x: number, y: number}} destSize
+      * @param {Object=} colorObj optional
+      * @returns {void}
+      */
+    drawTexturePro(textureId, srcPos, srcSize, destPos, destSize) { }
 
     /**
      * Returns current width.
@@ -618,9 +705,9 @@ export class Renderer {
     /**
      * On resize callback
      */
-    set onResize(cb){}
-    
-    
+    set onResize(cb) { }
+
+
     /**
     * Set target fps 
     */
@@ -638,12 +725,12 @@ export class Renderer {
      * @param {string} path
      * @returns {{width: number, height: number, format: number, data: Uint8Array}} 
      */
-    loadImage(path){}
+    loadImage(path) { }
 
     /**
      * poll for input
      */
-    GetInput(){}
+    GetInput() { }
 }
 
 /**
@@ -678,4 +765,125 @@ export function loadRenderer() {
             }
         }
     }
+}
+
+
+/**
+ * Load the native renderer module.
+ * The JSDoc return type tells Rollup/TS that the native exports include a constructor `Renderer`.
+ * @returns {{
+ *   Renderer: new(...args: any[]) => Renderer,
+ *   FULLSCREEN: number,
+ *   RESIZABLE: number,
+ *   UNDECORATED: number,
+ *   ALWAYS_RUN: number,
+ *   VSYNC_HINT: number,
+ *   MSAA_4X_HINT: number
+ * }}
+ */
+export function loadRendererSea({ assetGetterSync = null } = {}) {
+    const require = createRequire(__filename || import.meta.url);
+    
+    // 1) dev: node-gyp-build
+    try {
+        return require('node-gyp-build')(path.join(__dirname, '..'));
+    } catch (e) { /* fall through */ }
+
+    // 2) dev: on-disk prebuild path
+    try {
+        const platformTag = `${process.platform}-${process.arch}`;
+        const p = path.join(__dirname, '..', 'prebuilds', platformTag, 'renderer.node');
+        return require(p);
+    } catch (e) { /* fall through */ }
+
+    // 3) embedded assets extraction path (synchronous)
+    // if assetGetterSync not provided, try node:sea synchronously
+    let getter = assetGetterSync;
+    if (!getter) {
+        try {
+            const sea = require('node:sea');
+            if (sea && typeof sea.getAsset === 'function') {
+                // node:sea.getAsset is usually sync; wrap to unify return value
+                getter = (name) => {
+                    try {
+                        return sea.getAsset(name); // may return string or ArrayBuffer
+                    } catch (err) {
+                        return null;
+                    }
+                };
+            }
+        } catch (err) {
+            // no node:sea available - we can't extract assets
+            getter = null;
+        }
+    }
+
+    if (!getter) {
+        throw new Error('Could not locate renderer native module: tried node-gyp-build, prebuilds on disk, and no asset getter available for embedded assets.');
+    }
+
+    // platform-specific asset names
+    const platformTag = `${process.platform}-${process.arch}`;
+    const nodeAssetName = path.posix.join('prebuilds', platformTag, 'renderer.node');
+    const dllAssetName1 = process.platform === 'win32' ? path.posix.join('prebuilds', platformTag, 'glfw3.dll') : null;
+    const dllAssetName2 = process.platform === 'win32' ? path.posix.join('prebuilds', platformTag, 'raylib.dll') : null;
+
+
+    // get assets
+    const nodeAsset = getter(nodeAssetName);
+    if (!nodeAsset) {
+        throw new Error(`Embedded asset not found: ${nodeAssetName}`);
+    }
+    const nodeBuf = bufferFromAsset(nodeAsset);
+    if (!nodeBuf) throw new Error('Failed to convert node asset to Buffer');
+
+    // prepare temp
+    const tempDir = createRunTempDir('assets-extract');
+    const nodeDestName = `renderer-${platformTag}.node`;
+    const nodeDest = path.join(tempDir, nodeDestName);
+
+    // extract node
+    writeFileAtomicSync(nodeDest, nodeBuf);
+    try { fs.chmodSync(nodeDest, 0o755); } catch (e) { /* ignore */ }
+
+    // extract dll if present and prepend to PATH/LD...
+    if (dllAssetName1) {
+        const dllAsset = getter(dllAssetName1);
+        const dllAsset2 = getter(dllAssetName2)
+        if (dllAsset) {
+            const dllBuf = bufferFromAsset(dllAsset);
+            const dllDestName = `renderer-${platformTag}.dll`;
+            const dllDest = path.join(tempDir, dllDestName);
+            writeFileAtomicSync(dllDest, dllBuf);
+            prependPathForLibraries(tempDir);
+            // do not chmod DLL; Windows doesn't use exec bits
+        } else {
+            // Not fatal but warn (dependent DLL missing)
+            console.warn(`Warning: embedded DLL not found: ${dllAssetName1}`);
+        }
+
+        if (dllAsset2) {
+            const dllBuf = bufferFromAsset(dllAsset2);
+            const dllDestName = `renderer-${platformTag}.dll`;
+            const dllDest = path.join(tempDir, dllDestName);
+            writeFileAtomicSync(dllDest, dllBuf);
+            prependPathForLibraries(tempDir);
+            // do not chmod DLL; Windows doesn't use exec bits
+        } else {
+            // Not fatal but warn (dependent DLL missing)
+            console.warn(`Warning: embedded DLL not found: ${dllAssetName2}`);
+        }
+    } else {
+        // On linux/darwin we still add tempDir to dynamic loader search paths as a best-effort
+        prependPathForLibraries(tempDir);
+    }
+
+    // schedule best-effort cleanup at process exit (ignore errors)
+    process.on('exit', () => {
+        try { cleanupDirBestEffort(tempDir); } catch (e) { /* ignore */ }
+    });
+
+    console.log(nodeDest)
+
+    return require(nodeDest);
 }

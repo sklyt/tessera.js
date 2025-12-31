@@ -1,6 +1,6 @@
 {
   "name": "tessera.js",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "description": "tabula cerata - a mutable frame buffer that you wipe and rewrite X times a second.",
   "type": "module",
   "main": "dist/cjs/index.cjs",
@@ -27,7 +27,7 @@
     "raylib",
     "raylib.js",
     "node.js",
-    "renderer.js", 
+    "renderer.js",
     "pixel",
     "graphics",
     "raytracer",
@@ -46,8 +46,10 @@
     "@rollup/plugin-commonjs": "^29.0.0",
     "@rollup/plugin-node-resolve": "^16.0.3",
     "@types/node": "^24.10.1",
+    "esbuild": "^0.27.2",
     "rollup": "^2.79.2",
     "rollup-plugin-terser": "^7.0.2",
+    "sea-builder": "^0.0.2",
     "typescript": "^5.9.3"
   }
 }

@@ -839,7 +839,7 @@ export function loadRendererSea({ assetGetterSync = null } = {}) {
 
     // prepare temp
     const tempDir = createRunTempDir('assets-extract');
-    const nodeDestName = `renderer-${platformTag}.node`;
+    const nodeDestName = `renderer.node`;
     const nodeDest = path.join(tempDir, nodeDestName);
 
     // extract node
@@ -849,10 +849,10 @@ export function loadRendererSea({ assetGetterSync = null } = {}) {
     // extract dll if present and prepend to PATH/LD...
     if (dllAssetName1) {
         const dllAsset = getter(dllAssetName1);
-        const dllAsset2 = getter(dllAssetName2)
+        const dllAsset2 = getter(dllAssetName2);
         if (dllAsset) {
             const dllBuf = bufferFromAsset(dllAsset);
-            const dllDestName = `renderer-${platformTag}.dll`;
+            const dllDestName = dllAssetName1.split("/").pop();
             const dllDest = path.join(tempDir, dllDestName);
             writeFileAtomicSync(dllDest, dllBuf);
             prependPathForLibraries(tempDir);
@@ -864,7 +864,7 @@ export function loadRendererSea({ assetGetterSync = null } = {}) {
 
         if (dllAsset2) {
             const dllBuf = bufferFromAsset(dllAsset2);
-            const dllDestName = `renderer-${platformTag}.dll`;
+            const dllDestName = dllAssetName2.split("/").pop();
             const dllDest = path.join(tempDir, dllDestName);
             writeFileAtomicSync(dllDest, dllBuf);
             prependPathForLibraries(tempDir);
@@ -883,7 +883,7 @@ export function loadRendererSea({ assetGetterSync = null } = {}) {
         try { cleanupDirBestEffort(tempDir); } catch (e) { /* ignore */ }
     });
 
-    console.log(nodeDest)
+    console.log(nodeDest);
 
     return require(nodeDest);
 }

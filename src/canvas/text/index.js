@@ -1,4 +1,5 @@
 import { Renderer } from "../../loader.js";
+import { DirtyRegionTracker } from "../../render_helpers.js";
 import { PixelBuffer } from "../pixel_buffer.js";
 import { shouldDrawPixel } from "../utils.js";
 
@@ -143,6 +144,43 @@ export class BitmapFont {
         return { width, height: this.lineHeight };
     }
 
+    // Add to your BitmapFont class
+    drawTextDebug(canvas, text, x, y, color = { r: 255, g: 0, b: 0, a: 128 }) {
+        console.log(`Drawing text: "${text}" at (${x}, ${y})`);
+        const tracker = new DirtyRegionTracker(canvas)
+        tracker.markRect(0, 0, canvas.width, canvas.height)
+        // Draw bounding box for each glyph
+        let cursorX = x;
+        for (let i = 0; i < text.length; i++) {
+            const glyph = this.getGlyph(text[i]);
+            const destX = Math.floor(cursorX + glyph.xOffset);
+            const destY = Math.floor(y + glyph.yOffset);
+
+            // Draw red outline around glyph bounds
+            for (let dx = 0; dx < glyph.width; dx++) {
+                this.drawDebugPixel(canvas, destX + dx, destY, color);
+                this.drawDebugPixel(canvas, destX + dx, destY + glyph.height - 1, color);
+            }
+            for (let dy = 0; dy < glyph.height; dy++) {
+                this.drawDebugPixel(canvas, destX, destY + dy, color);
+                this.drawDebugPixel(canvas, destX + glyph.width - 1, destY + dy, color);
+            }
+
+            cursorX += glyph.xAdvance + this.config.charSpacing;
+        }
+        tracker.flush()
+    }
+
+    drawDebugPixel(canvas, x, y, color) {
+        if (x >= 0 && x < canvas.width && y >= 0 && y < canvas.height) {
+            const idx = (y * canvas.width + x) * 4;
+            canvas.data[idx] = color.r;
+            canvas.data[idx + 1] = color.g;
+            canvas.data[idx + 2] = color.b;
+            canvas.data[idx + 3] = Math.min(255, canvas.data[idx + 3] + color.a);
+        }
+    }
+
     /**
      * draw text to canvas buffer
      this copies glyph pixels from atlas to canvas
@@ -255,8 +293,8 @@ export class BitmapFont {
 
         // Update canvas region
         if (minX !== Infinity) {
-            const regionWidth = maxX - minX;
-            const regionHeight = maxY - minY;
+            const regionWidth = maxX - minX + 1;
+            const regionHeight = maxY - minY + 1;
 
             const regionData = new Uint8Array(regionWidth * regionHeight * 4);
             for (let row = 0; row < regionHeight; row++) {

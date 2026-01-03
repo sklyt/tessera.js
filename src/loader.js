@@ -883,7 +883,7 @@ export function loadRendererSea({ assetGetterSync = null } = {}) {
         try { cleanupDirBestEffort(tempDir); } catch (e) { /* ignore */ }
     });
 
-    console.log(nodeDest);
+    // console.log(nodeDest);
 
     return require(nodeDest);
 }

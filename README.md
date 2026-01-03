@@ -468,6 +468,17 @@ font.drawMultilineText(
     camera = undefined,
 ); // draws wrapped lines; returns { width, height }
 font.drawTextWithTint(canvas, text, x, y, r, g, b, a = 255, scale = 1.0, camera = undefined);
+
+Updated API, with rotation examples:
+
+// Regular text
+font.drawText(canvas, "Hello", 100, 100);
+
+// Rotated text (45 degrees)
+font.drawText(canvas, "Rotated!", 200, 200, {r:255, g:0, b:0, a:255}, 1.0, 45, camera);
+
+// Scaled and rotated
+font.drawText(canvas, "Big!", 300, 300, {r:0, g:255, b:0, a:255}, 2.0, -30, camera);
 ```
 ### Input 
 

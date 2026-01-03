@@ -1,8 +1,7 @@
 import { Renderer } from "../../loader.js";
 import { DirtyRegionTracker } from "../../render_helpers.js";
 import { PixelBuffer } from "../pixel_buffer.js";
-import { shouldDrawPixel } from "../utils.js";
-
+import { shouldDrawPixel, clampRectToCanvas } from "../utils.js";
 
 class Glyph {
     constructor(char, x, y, width, height, xOffset, yOffset, xAdvance) {
@@ -17,8 +16,6 @@ class Glyph {
     }
 }
 
-
-
 export class BitmapFont {
     /**
      * Create bitmap font from atlas image
@@ -29,9 +26,7 @@ export class BitmapFont {
     constructor(renderer, atlasPath, config = {}) {
         this.renderer = renderer;
 
-
         this.atlasImage = renderer.loadImage(atlasPath);
-        // console.log(`Loaded font atlas: ${this.atlasImage.width}x${this.atlasImage.height}`);
         if (!this.atlasImage.data)
             console.warn("image data empty")
 
@@ -48,23 +43,18 @@ export class BitmapFont {
             offsetY: config.offsetY || 0,
             charOrder: config.charOrder || this.getDefaultCharOrder(),
             lineHeight: config.lineHeight || config.cellHeight,
-            lineGap: config.lineGap || 0,      // Extra space between lines
-            charSpacing: config.charSpacing || 0  // Extra space between characters
+            lineGap: config.lineGap || 0,
+            charSpacing: config.charSpacing || 0
         };
-
 
         this.glyphs = new Map();
         this.scaledGlyphCache = new Map();
         this.buildGlyphMap();
 
-
         this.lineHeight = this.config.cellHeight;
         this.baseline = Math.floor(this.lineHeight * 0.8);
     }
 
-    /**
-     * Default ASCII character order (same as https://lucide.github.io/Font-Atlas-Generator/)
-     */
     getDefaultCharOrder() {
         return ' ☺☻♥♦♣♠•◘○◙♂♀♪♫☼►◄↕‼¶§▬↨↑↓→←∟↔▲▼' +
             ' !"#$%&\'()*+,-./0123456789:;<=>?' +
@@ -76,9 +66,6 @@ export class BitmapFont {
             'αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■□';
     }
 
-    /**
-     * Build glyph map from grid layout
-     */
     buildGlyphMap() {
         const { cellsPerRow, cellsPerColumn, cellWidth, cellHeight, offsetX, offsetY, charOrder } = this.config;
 
@@ -96,8 +83,8 @@ export class BitmapFont {
                     char,
                     x, y,
                     cellWidth, cellHeight,
-                    0, 0,  // No offset by default
-                    cellWidth  // Advance = cell width
+                    0, 0,
+                    cellWidth
                 );
 
                 this.glyphs.set(char, glyph);
@@ -108,27 +95,18 @@ export class BitmapFont {
         console.log(`Built ${this.glyphs.size} glyphs from atlas`);
     }
 
-    /**
-     * Get glyph for character (with fallback)
-     */
     getGlyph(char) {
         let glyph = this.glyphs.get(char);
 
         if (!glyph) {
-
-            if (glyph == "\n") {
+            if (char === "\n") {
                 return this.glyphs.get(' ')
             }
-
-            // Fallback to '?' or first character
             glyph = this.glyphs.get('?') || this.glyphs.get(' ') || this.glyphs.values().next().value;
         }
         return glyph;
     }
 
-    /**
-     * measure text dimensions from altas
-     */
     measureText(text) {
         let width = 0;
 
@@ -138,211 +116,377 @@ export class BitmapFont {
         }
 
         if (text.length > 0) {
-            width -= this.config.charSpacing;  // Don't add spacing after last char
+            width -= this.config.charSpacing;
         }
 
         return { width, height: this.lineHeight };
     }
 
-    // Add to your BitmapFont class
-    drawTextDebug(canvas, text, x, y, color = { r: 255, g: 0, b: 0, a: 128 }) {
-        console.log(`Drawing text: "${text}" at (${x}, ${y})`);
-        const tracker = new DirtyRegionTracker(canvas)
-        tracker.markRect(0, 0, canvas.width, canvas.height)
-        // Draw bounding box for each glyph
-        let cursorX = x;
-        for (let i = 0; i < text.length; i++) {
-            const glyph = this.getGlyph(text[i]);
-            const destX = Math.floor(cursorX + glyph.xOffset);
-            const destY = Math.floor(y + glyph.yOffset);
-
-            // Draw red outline around glyph bounds
-            for (let dx = 0; dx < glyph.width; dx++) {
-                this.drawDebugPixel(canvas, destX + dx, destY, color);
-                this.drawDebugPixel(canvas, destX + dx, destY + glyph.height - 1, color);
-            }
-            for (let dy = 0; dy < glyph.height; dy++) {
-                this.drawDebugPixel(canvas, destX, destY + dy, color);
-                this.drawDebugPixel(canvas, destX + glyph.width - 1, destY + dy, color);
-            }
-
-            cursorX += glyph.xAdvance + this.config.charSpacing;
-        }
-        tracker.flush()
-    }
-
-    drawDebugPixel(canvas, x, y, color) {
-        if (x >= 0 && x < canvas.width && y >= 0 && y < canvas.height) {
-            const idx = (y * canvas.width + x) * 4;
-            canvas.data[idx] = color.r;
-            canvas.data[idx + 1] = color.g;
-            canvas.data[idx + 2] = color.b;
-            canvas.data[idx + 3] = Math.min(255, canvas.data[idx + 3] + color.a);
-        }
-    }
-
     /**
-     * draw text to canvas buffer
-     this copies glyph pixels from atlas to canvas
+     * Draw text with optimized sampling and optional rotation
      * @param {PixelBuffer} canvas 
      * @param {string} text 
-     * @param {number} x 
-     * @param {number} y 
-     * @param {r: 255, g: 255, b: 255, a: 255}} color 
-     * @returns 
+     * @param {number} x - Origin X position
+     * @param {number} y - Origin Y position
+     * @param {Object} color - {r, g, b, a}
+     * @param {number} scale - Scale factor
+     * @param {number} rotation - Rotation in degrees (0-360)
+     * @param {Camera2D} camera - Optional camera for viewport clipping
      */
-    drawText(canvas, text, x, y, color = { r: 255, g: 255, b: 255, a: 255 }, scale = 1.0, camera = undefined) {
-        // const startTime = performance.now();
-
-        let cursorX = x;
-        const cursorY = y;
-
+    drawText(canvas, text, x, y, color = { r: 255, g: 255, b: 255, a: 255 }, scale = 1.0, rotation = 0, camera = undefined) {
         const atlasData = this.atlasImage.data;
         const atlasWidth = this.atlasImage.width;
         const canvasData = canvas.data;
         const canvasWidth = canvas.width;
         const canvasHeight = canvas.height;
 
-        let pixelsDrawn = 0;
+        // Pre-calculate rotation if needed
+        const hasRotation = rotation !== 0;
+        const radians = hasRotation ? (rotation * Math.PI / 180) : 0;
+        const cosTheta = hasRotation ? Math.cos(radians) : 1;
+        const sinTheta = hasRotation ? Math.sin(radians) : 0;
+
+        // Pre-calculate color multipliers (normalized 0-1)
+        const mR = color.r / 255;
+        const mG = color.g / 255;
+        const mB = color.b / 255;
+        const mA = color.a / 255;
+        const neutralTint = (mR === 1 && mG === 1 && mB === 1 && mA === 1);
+
+        let cursorX = 0; // Relative to origin
         let minX = Infinity, minY = Infinity;
         let maxX = -Infinity, maxY = -Infinity;
 
         for (let i = 0; i < text.length; i++) {
             const char = text[i];
             const glyph = this.getGlyph(char);
-            // Skip spaces (don't draw, just advance)
+
+            // Skip spaces
             if (char === ' ') {
                 cursorX += (glyph.xAdvance + this.config.charSpacing) * scale;
                 continue;
-
             }
 
+            const glyphX = cursorX + glyph.xOffset * scale;
+            const glyphY = glyph.yOffset * scale;
+            const scaledWidth = Math.ceil(glyph.width * scale);
+            const scaledHeight = Math.ceil(glyph.height * scale);
 
-
-            const destX = Math.floor(cursorX + glyph.xOffset * scale);
-            const destY = Math.floor(cursorY + glyph.yOffset * scale);
-            const scaledWidth = Math.floor(glyph.width * scale);
-            const scaledHeight = Math.floor(glyph.height * scale);
-
-            // Cache scaled glyph alphas
+            // Cache scaled glyph
             const key = `${glyph.char}_${scale}`;
             if (!this.scaledGlyphCache.has(key)) {
-                const scaledAlphas = new Uint8Array(scaledWidth * scaledHeight);
-                for (let gy = 0; gy < scaledHeight; gy++) {
-                    for (let gx = 0; gx < scaledWidth; gx++) {
-                        const atlasX = glyph.x + Math.floor(gx / scale);
-                        const atlasY = glyph.y + Math.floor(gy / scale);
-                        if (atlasX >= glyph.x + glyph.width || atlasY >= glyph.y + glyph.height) {
-                            scaledAlphas[gy * scaledWidth + gx] = 0;
-                            continue;
-                        }
-                        const atlasIdx = (atlasY * atlasWidth + atlasX) * 4;
-                        const atlasR = atlasData[atlasIdx + 0];
-                        const atlasG = atlasData[atlasIdx + 1];
-                        const atlasB = atlasData[atlasIdx + 2];
-                        const atlasA = atlasData[atlasIdx + 3];
-                        if (atlasA === 0) {
-                            scaledAlphas[gy * scaledWidth + gx] = 0;
-                            continue;
-                        }
-                        const intensity = (atlasR + atlasG + atlasB) / 3;
-                        const alpha = (intensity / 255) * (atlasA / 255);
-                        scaledAlphas[gy * scaledWidth + gx] = Math.floor(alpha * 255);
-                    }
-                }
-                this.scaledGlyphCache.set(key, scaledAlphas);
+                this.cacheScaledGlyph(glyph, scale, atlasData, atlasWidth, key);
             }
             const scaledAlphas = this.scaledGlyphCache.get(key);
 
-            // Copy glyph pixels from atlas to canvas
-            for (let gy = 0; gy < scaledHeight; gy++) {
-                for (let gx = 0; gx < scaledWidth; gx++) {
-                    const px = destX + gx;
-                    const py = destY + gy;
+            // Draw glyph pixels with optimized paths
+            if (hasRotation) {
+                this.drawRotatedGlyph(
+                    canvas, canvasWidth, canvasHeight,
+                    scaledAlphas, scaledWidth, scaledHeight,
+                    x, y, glyphX, glyphY,
+                    cosTheta, sinTheta,
+                    mR, mG, mB, mA, neutralTint,
+                    camera
+                );
+            } else {
+                const result = this.drawGlyphFast(
+                    canvasData, canvasWidth, canvasHeight,
+                    scaledAlphas, scaledWidth, scaledHeight,
+                    x + glyphX, y + glyphY,
+                    mR, mG, mB, mA, neutralTint,
+                    camera
+                );
+                
+                if (result) {
+                    minX = Math.min(minX, result.minX);
+                    minY = Math.min(minY, result.minY);
+                    maxX = Math.max(maxX, result.maxX);
+                    maxY = Math.max(maxY, result.maxY);
+                }
+            }
 
-                    // Bounds check canvas
-                    if (px < 0 || px >= canvasWidth || py < 0 || py >= canvasHeight) continue;
+            cursorX += (glyph.xAdvance + this.config.charSpacing) * scale;
+        }
 
-                    if (!shouldDrawPixel(px, py, canvas, camera)) continue;
+        // Update canvas buffer
+        if (minX !== Infinity) {
+            this.uploadCanvasRegion(canvas, minX, minY, maxX, maxY);
+        }
+    }
 
-                    const alpha = (scaledAlphas[gy * scaledWidth + gx] / 255) * (color.a / 255);
+    /**
+     * Cache scaled glyph alpha values
+     */
+    cacheScaledGlyph(glyph, scale, atlasData, atlasWidth, key) {
+        const scaledWidth = Math.ceil(glyph.width * scale);
+        const scaledHeight = Math.ceil(glyph.height * scale);
+        const scaledAlphas = new Uint8Array(scaledWidth * scaledHeight);
 
-                    if (alpha < 0.01) continue; // Skip nearly transparent
+        for (let gy = 0; gy < scaledHeight; gy++) {
+            for (let gx = 0; gx < scaledWidth; gx++) {
+                const atlasX = glyph.x + Math.floor(gx / scale);
+                const atlasY = glyph.y + Math.floor(gy / scale);
+                
+                if (atlasX >= glyph.x + glyph.width || atlasY >= glyph.y + glyph.height) {
+                    scaledAlphas[gy * scaledWidth + gx] = 0;
+                    continue;
+                }
 
-                    // Write to canvas with alpha blending
-                    const canvasIdx = (py * canvasWidth + px) * 4;
-                    const invAlpha = 1 - alpha;
+                const atlasIdx = (atlasY * atlasWidth + atlasX) * 4;
+                const atlasR = atlasData[atlasIdx];
+                const atlasG = atlasData[atlasIdx + 1];
+                const atlasB = atlasData[atlasIdx + 2];
+                const atlasA = atlasData[atlasIdx + 3];
 
-                    canvasData[canvasIdx + 0] = Math.floor(color.r * alpha + canvasData[canvasIdx + 0] * invAlpha);
-                    canvasData[canvasIdx + 1] = Math.floor(color.g * alpha + canvasData[canvasIdx + 1] * invAlpha);
-                    canvasData[canvasIdx + 2] = Math.floor(color.b * alpha + canvasData[canvasIdx + 2] * invAlpha);
-                    canvasData[canvasIdx + 3] = 255; // Opaque output
+                if (atlasA === 0) {
+                    scaledAlphas[gy * scaledWidth + gx] = 0;
+                    continue;
+                }
+
+                const intensity = (atlasR + atlasG + atlasB) / 3;
+                const alpha = (intensity / 255) * (atlasA / 255);
+                scaledAlphas[gy * scaledWidth + gx] = Math.floor(alpha * 255);
+            }
+        }
+
+        this.scaledGlyphCache.set(key, scaledAlphas);
+    }
+
+    /**
+     * Fast non-rotated glyph drawing with optimized paths
+     */
+    drawGlyphFast(canvasData, canvasWidth, canvasHeight, scaledAlphas, width, height, destX, destY, mR, mG, mB, mA, neutralTint, camera) {
+        destX = Math.floor(destX);
+        destY = Math.floor(destY);
+
+        // Clamp to canvas bounds
+        const clamped = clampRectToCanvas(destX, destY, width, height, canvasWidth, canvasHeight);
+        if (!clamped) return null;
+
+        let minX = Infinity, minY = Infinity;
+        let maxX = -Infinity, maxY = -Infinity;
+
+        const startX = clamped.x;
+        const startY = clamped.y;
+        const endX = clamped.x + clamped.width;
+        const endY = clamped.y + clamped.height;
+
+        // Optimized path: neutral tint
+        if (neutralTint) {
+            for (let py = startY; py < endY; py++) {
+                const gy = py - destY;
+                const rowBase = py * canvasWidth * 4;
+                
+                for (let px = startX; px < endX; px++) {
+                    if (camera && !shouldDrawPixel(px, py, { width: canvasWidth, height: canvasHeight }, camera)) continue;
+
+                    const gx = px - destX;
+                    const alpha = scaledAlphas[gy * width + gx];
+                    if (alpha < 1) continue;
+
+                    const idx = rowBase + px * 4;
+                    const sA = alpha;
+                    const inv = 255 - sA;
+
+                    if (sA === 255) {
+                        // Fully opaque - direct write
+                        canvasData[idx] = Math.floor(mR * 255);
+                        canvasData[idx + 1] = Math.floor(mG * 255);
+                        canvasData[idx + 2] = Math.floor(mB * 255);
+                        canvasData[idx + 3] = 255;
+                    } else {
+                        // Integer alpha composite
+                        const sR = Math.floor(mR * 255);
+                        const sG = Math.floor(mG * 255);
+                        const sB = Math.floor(mB * 255);
+                        
+                        canvasData[idx] = ((sR * sA + canvasData[idx] * inv) / 255) | 0;
+                        canvasData[idx + 1] = ((sG * sA + canvasData[idx + 1] * inv) / 255) | 0;
+                        canvasData[idx + 2] = ((sB * sA + canvasData[idx + 2] * inv) / 255) | 0;
+                        canvasData[idx + 3] = ((sA * 255 + canvasData[idx + 3] * inv) / 255) | 0;
+                    }
 
                     minX = Math.min(minX, px);
                     minY = Math.min(minY, py);
                     maxX = Math.max(maxX, px);
                     maxY = Math.max(maxY, py);
-
-                    pixelsDrawn++;
                 }
             }
+        } else {
+            // General path with tint
+            for (let py = startY; py < endY; py++) {
+                const gy = py - destY;
+                const rowBase = py * canvasWidth * 4;
+                
+                for (let px = startX; px < endX; px++) {
+                    if (camera && !shouldDrawPixel(px, py, { width: canvasWidth, height: canvasHeight }, camera)) continue;
 
-            // Advance cursor
-            cursorX += (glyph.xAdvance + this.config.charSpacing) * scale;
+                    const gx = px - destX;
+                    const alphaRaw = scaledAlphas[gy * width + gx];
+                    if (alphaRaw < 1) continue;
+
+                    const idx = rowBase + px * 4;
+                    const sA = (alphaRaw / 255) * mA;
+                    
+                    if (sA < 0.01) continue;
+
+                    const invA = 1 - sA;
+                    const dR = canvasData[idx] / 255;
+                    const dG = canvasData[idx + 1] / 255;
+                    const dB = canvasData[idx + 2] / 255;
+
+                    canvasData[idx] = Math.floor((mR * sA + dR * invA) * 255);
+                    canvasData[idx + 1] = Math.floor((mG * sA + dG * invA) * 255);
+                    canvasData[idx + 2] = Math.floor((mB * sA + dB * invA) * 255);
+                    canvasData[idx + 3] = 255;
+
+                    minX = Math.min(minX, px);
+                    minY = Math.min(minY, py);
+                    maxX = Math.max(maxX, px);
+                    maxY = Math.max(maxY, py);
+                }
+            }
         }
 
-        // Update canvas region
-        if (minX !== Infinity) {
-            const regionWidth = maxX - minX + 1;
-            const regionHeight = maxY - minY + 1;
+        return minX !== Infinity ? { minX, minY, maxX, maxY } : null;
+    }
 
+    drawRotatedGlyph(canvas, canvasWidth, canvasHeight, scaledAlphas, width, height, originX, originY, glyphX, glyphY, cosTheta, sinTheta, mR, mG, mB, mA, neutralTint, camera) {
+
+        const canvasData = canvas.data
+        const corners = [
+            { x: glyphX, y: glyphY },
+            { x: glyphX + width, y: glyphY },
+            { x: glyphX, y: glyphY + height },
+            { x: glyphX + width, y: glyphY + height }
+        ];
+
+        let minX = Infinity, minY = Infinity;
+        let maxX = -Infinity, maxY = -Infinity;
+
+        for (const corner of corners) {
+            const rx = corner.x * cosTheta - corner.y * sinTheta;
+            const ry = corner.x * sinTheta + corner.y * cosTheta;
+            minX = Math.min(minX, rx);
+            minY = Math.min(minY, ry);
+            maxX = Math.max(maxX, rx);
+            maxY = Math.max(maxY, ry);
+        }
+
+        const startX = Math.max(0, Math.floor(originX + minX));
+        const startY = Math.max(0, Math.floor(originY + minY));
+        const endX = Math.min(canvasWidth, Math.ceil(originX + maxX));
+        const endY = Math.min(canvasHeight, Math.ceil(originY + maxY));
+
+
+        let dirtyMinX = canvasWidth;
+        let dirtyMinY = canvasHeight;
+        let dirtyMaxX = -1;
+        let dirtyMaxY = -1;
+
+        for (let py = startY; py < endY; py++) {
+            const rowBase = py * canvasWidth * 4;
+            
+            for (let px = startX; px < endX; px++) {
+                if (camera && !shouldDrawPixel(px, py, { width: canvasWidth, height: canvasHeight }, camera)) continue;
+
+                // Inverse rotate to find source pixel
+                const dx = px - originX;
+                const dy = py - originY;
+                const srcX = dx * cosTheta + dy * sinTheta - glyphX;
+                const srcY = -dx * sinTheta + dy * cosTheta - glyphY;
+
+                if (srcX < 0 || srcX >= width || srcY < 0 || srcY >= height) continue;
+
+                const gx = Math.floor(srcX);
+                const gy = Math.floor(srcY);
+                
+                const alphaRaw = scaledAlphas[gy * width + gx];
+                if (alphaRaw < 1) continue;
+
+                const idx = rowBase + px * 4;
+                const sA = (alphaRaw / 255) * mA;
+                
+                if (sA < 0.01) continue;
+
+                const invA = 1 - sA;
+                const dR = canvasData[idx] / 255;
+                const dG = canvasData[idx + 1] / 255;
+                const dB = canvasData[idx + 2] / 255;
+
+                canvasData[idx] = Math.floor((mR * sA + dR * invA) * 255);
+                canvasData[idx + 1] = Math.floor((mG * sA + dG * invA) * 255);
+                canvasData[idx + 2] = Math.floor((mB * sA + dB * invA) * 255);
+                canvasData[idx + 3] = 255;
+
+                // Track dirty region
+                if (px < dirtyMinX) dirtyMinX = px;
+                if (py < dirtyMinY) dirtyMinY = py;
+                if (px > dirtyMaxX) dirtyMaxX = px;
+                if (py > dirtyMaxY) dirtyMaxY = py;
+            }
+        }
+
+        // Flush dirty region if any pixels were drawn
+        if (dirtyMaxX >= 0) {
+            const regionWidth = dirtyMaxX - dirtyMinX + 1;
+            const regionHeight = dirtyMaxY - dirtyMinY + 1;
             const regionData = new Uint8Array(regionWidth * regionHeight * 4);
-            for (let row = 0; row < regionHeight; row++) {
-                const srcOffset = ((minY + row) * canvasWidth + minX) * 4;
-                const dstOffset = row * regionWidth * 4;
-                const rowBytes = regionWidth * 4;
 
+            // Extract region data (cache-friendly row-by-row copy)
+            for (let row = 0; row < regionHeight; row++) {
+                const srcOffset = ((dirtyMinY + row) * canvasWidth + dirtyMinX) * 4;
+                const dstOffset = row * regionWidth * 4;
                 regionData.set(
-                    canvasData.subarray(srcOffset, srcOffset + rowBytes),
+                    canvasData.subarray(srcOffset, srcOffset + regionWidth * 4),
                     dstOffset
                 );
             }
 
-            canvas.renderer.updateBufferData(
+            // Upload to GPU
+            this.renderer.updateBufferData(
                 canvas.bufferId,
                 regionData,
-                minX, minY,
+                dirtyMinX, dirtyMinY,
                 regionWidth, regionHeight
             );
             canvas.needsUpload = true;
-            canvas.upload()
         }
-
-        // const elapsed = performance.now() - startTime;
-        // return { 
-        //     pixels: pixelsDrawn, 
-        //     time: elapsed,
-        //     width: cursorX - x,
-        //     height: this.lineHeight
-        // };
     }
 
     /**
-     * Draw text with custom tint color
-     * @param {PixelBuffer} canvas 
-     * @param {string} text 
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} r 
-     * @param {number} g 
-     * @param {number} b 
-     * @param {number} a 
-     * @returns 
+     * Upload dirty region to GPU
      */
-    drawTextWithTint(canvas, text, x, y, r, g, b, a = 255, camera = undefined) {
-        return this.drawText(canvas, text, x, y, { r, g, b, a }, camera);
+    uploadCanvasRegion(canvas, minX, minY, maxX, maxY) {
+        const regionWidth = maxX - minX + 1;
+        const regionHeight = maxY - minY + 1;
+
+        const regionData = new Uint8Array(regionWidth * regionHeight * 4);
+        for (let row = 0; row < regionHeight; row++) {
+            const srcOffset = ((minY + row) * canvas.width + minX) * 4;
+            const dstOffset = row * regionWidth * 4;
+            const rowBytes = regionWidth * 4;
+
+            regionData.set(
+                canvas.data.subarray(srcOffset, srcOffset + rowBytes),
+                dstOffset
+            );
+        }
+
+        canvas.renderer.updateBufferData(
+            canvas.bufferId,
+            regionData,
+            minX, minY,
+            regionWidth, regionHeight
+        );
+        canvas.needsUpload = true;
+        canvas.upload();
     }
 
+    drawTextWithTint(canvas, text, x, y, r, g, b, a = 255, scale = 1.0, rotation = 0, camera = undefined) {
+        return this.drawText(canvas, text, x, y, { r, g, b, a }, scale, rotation, camera);
+    }
 
     wrapText(text, maxWidth) {
         const words = text.split(' ');
@@ -368,39 +512,27 @@ export class BitmapFont {
         return lines;
     }
 
-    /**
-     * 
-     * @param {PixelBuffer} canvas 
-     * @param {*} text 
-     * @param {*} x 
-     * @param {*} y 
-     * @param {*} maxWidth 
-     * @param {*} align 
-     * @param {*} color 
-     * @returns 
-     */
-    drawMultilineText(canvas, text, x, y, maxWidth, align = 'left', color = { r: 255, g: 255, b: 255, a: 255 }, camera = undefined) {
+    drawMultilineText(canvas, text, x, y, maxWidth, align = 'left', color = { r: 255, g: 255, b: 255, a: 255 }, scale = 1.0, rotation = 0, camera = undefined) {
         const lines = this.wrapText(text, maxWidth);
-        let currentY = y;
+        let currentY = 0;
 
-        lines.forEach(line => {
+        for (const line of lines) {
             const metrics = this.measureText(line);
-            let lineX = x;
+            let lineX = 0;
 
-            // Apply alignment
             if (align === 'center') {
-                lineX = x + (maxWidth - metrics.width) / 2;
+                lineX = (maxWidth - metrics.width) / 2;
             } else if (align === 'right') {
-                lineX = x + maxWidth - metrics.width;
+                lineX = maxWidth - metrics.width;
             }
 
-            this.drawText(canvas, line, lineX, currentY, color, camera);
-            currentY += this.lineHeight + this.config.lineGap;
-        });
+            this.drawText(canvas, line, x + lineX, y + currentY, color, scale, rotation, camera);
+            currentY += (this.lineHeight + this.config.lineGap) * scale;
+        }
 
         return {
             width: maxWidth,
-            height: lines.length * this.lineHeight
+            height: lines.length * this.lineHeight * scale
         };
     }
 }

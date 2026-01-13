@@ -46,28 +46,22 @@ Every abstraction in this library builds from this primitive.
 ## Quick Start
 
 ```js
-import { loadRenderer, PixelBuffer, DirtyRegionTracker } from "tessera.js";
+import { Renderer, PixelBuffer, CacheBuffer } from "tessera.js";
 
-const { Renderer, FULLSCREEN, RESIZABLE } = loadRenderer();
+const [renderer, ops] = Renderer.create("Image", 650, 400)
 
-const renderer = new Renderer();
 
-// width, height, title
-if (!renderer.initialize(1920, 910, "Renderer")) {
-    console.error("Failed to initialize renderer");
-    process.exit(1);
-}
-
-renderer.setWindowState(RESIZABLE);
 renderer.targetFPS = 60;
 
 const canvas = new PixelBuffer(renderer, 650, 400); // where every pixel goes
-canvas.clear(1, 1, 1, 255)
-const data = canvas.data; // "pointer" to raw buffer for direct memory access
+const cache = new CacheBuffer(650, 400)
+cache.clear(1, 1, 1, 255)
+
+const data = cache.data; // "pointer" to raw buffer for direct memory access
 const width = canvas.width; // prefer variables outside loop, constant access in tight loop can be bad
 const height = canvas.height;
-const tracker = new DirtyRegionTracker(canvas) // VERY IMPORTANT (in direct memory access): tells the renderer which parts to update
-// random star like noise (direct memory access)
+
+
 for (let i = 0; i < 2000; i++) {
     const x = Math.floor(Math.random() * width);
     const y = Math.floor(Math.random() * height);
@@ -76,17 +70,11 @@ for (let i = 0; i < 2000; i++) {
     data[idx] = brightness;
     data[idx + 1] = brightness;
     data[idx + 2] = brightness;
-    data[idx + 3] = 255;
-    tracker.mark(x, y) 
+
 }
 
-tracker.flush() // updates the internal c++ data buffer
-canvas.upload() // tell the Graphics card to catch up and show changes
 
 renderer.onRender(() => {
-    // c++ calls you before rendering, this is where you "draw" stuff
-    renderer.clear({ r: 0, g: 0, b: 0, a: 50 }); // use if drawing on the window directly like fps text below
-    animationTime += 0.016;
     canvas.draw(0, 0); // draw at 0,0 top left
 
     // draw on the window directly (see font to draw on the canvas)
@@ -100,7 +88,8 @@ renderer.onRender(() => {
 
 function Loop() {
     renderer.input.GetInput(); // <- get keyboard/mouse input state
-
+    canvas.blit(cache) // apply cache
+    canvas.upload() // apply to texture
     if (renderer.step()) { // calls the callback and draws on screen
         setImmediate(Loop);
     } else {
@@ -125,8 +114,6 @@ process.on("SIGINT", () => {
 ```js
 
 function generateSimplexNoise(data, width, height, options = {}) {
-    const simplextracker = new DirtyRegionTracker(canvas) 
-    simplextracker.markRect(0, 0, width, height) // mark a huge region at once very fast
     // simplified Simplex-like noise
     const scale = options.scale || 0.01;
 
@@ -145,11 +132,10 @@ function generateSimplexNoise(data, width, height, options = {}) {
         }
     }
 
-    simplextracker.flush()
 }
 
-generateSimplexNoise(canvas.data, canvas.width, canvas.height);
-canvas.upload();
+generateSimplexNoise(cache.data, canvas.width, canvas.height);
+
 
 renderer.onRender(() => {
     canvas.draw(0, 0);

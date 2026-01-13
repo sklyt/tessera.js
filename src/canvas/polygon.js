@@ -79,26 +79,11 @@ export class PolygonDrawer {
 
         if (pixelsDrawn === 0) return { pixels: 0 };
 
-        // const regionWidth = maxX - minX + 1;
-        // const regionHeight = maxY - minY + 1;
-        // const regionData = PolygonDrawer._extractRegion(
-        //     data, width, minX, minY, regionWidth, regionHeight
-        // );
-
-        // canvas.renderer.updateBufferData(
-        //     canvas.bufferId,
-        //     regionData,
-        //     minX, minY,
-        //     regionWidth, regionHeight
-        // );
-
+        const tracker = canvas.dirtyTracker;
+        if (tracker) {
+            tracker.addRegion(minX, minY, maxX - minX + 1, maxY - minY + 1);
+        }
         canvas.needsUpload = true;
-
-        // return {
-        //     pixels: pixelsDrawn,
-        //     vertices: points.length,
-        //     scanlines: maxY - minY + 1
-        // };
     }
 
     /**

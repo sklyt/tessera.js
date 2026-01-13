@@ -75,6 +75,17 @@ export class PixelBuffer {
             console.log(`Created ${width}x${height} buffer (${width * height * 4} bytes)`);
     }
 
+    /**
+     * 
+     * @param {number} x 
+     * @param {number} y 
+     * @param {number} w 
+     * @param {number} h 
+     */
+    markRegion(x, y , w  = 1, h = 1){
+      this.dirtyTracker.addRegion(x, y, w, h)
+      this.needsUpload = true
+    }
 
     getCurrentBuffer() {
         const idx = Atomics.load(this.controlBuffer, CTRL_JS_WRITE_IDX);

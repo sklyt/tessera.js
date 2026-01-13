@@ -88,28 +88,11 @@ export class LineDrawer {
             return { pixels: 0, time: 0, regionSize: 0 };
         }
 
-        // Extract and update only the affected region
-        // const regionWidth = maxX - minX + 1;
-        // const regionHeight = maxY - minY + 1;
-        // const regionData = LineDrawer._extractRegion(
-        //     data, width, minX, minY, regionWidth, regionHeight
-        // );
-
-        // canvas.renderer.updateBufferData(
-        //     canvas.bufferId,
-        //     regionData,
-        //     minX, minY,
-        //     regionWidth, regionHeight
-        // );
-
+        const tracker = canvas.dirtyTracker;
+        if (tracker) {
+            tracker.addRegion(minX, minY, maxX - minX + 1, maxY - minY + 1);
+        }
         canvas.needsUpload = true;
-
-        // const elapsed = performance.now() - startTime;
-        // return {
-        //     pixels: pixelCount,
-        //     time: elapsed,
-        //     regionSize: regionWidth * regionHeight
-        // };
     }
 
     /**
@@ -175,33 +158,14 @@ export class LineDrawer {
         }
 
         if (pixelsDrawn === 0) {
-            //  { pixels: 0, linePoints: points.length, regionSize: 0 };
-            return
+            return;
         }
 
-        // Extract and update the affected region
-        // const regionWidth = maxX - minX + 1;
-        // const regionHeight = maxY - minY + 1;
-        // const regionData = LineDrawer._extractRegion(
-        //     data, width, minX, minY, regionWidth, regionHeight
-        // );
-
-        // canvas.renderer.updateBufferData(
-        //     canvas.bufferId,
-        //     regionData,
-        //     minX, minY,
-        //     regionWidth, regionHeight
-        // );
-
+        const tracker = canvas.dirtyTracker;
+        if (tracker) {
+            tracker.addRegion(minX, minY, maxX - minX + 1, maxY - minY + 1);
+        }
         canvas.needsUpload = true;
-
-        // const elapsed = performance.now() - startTime;
-        // return {
-        //     pixels: pixelsDrawn,
-        //     linePoints: points.length,
-        //     time: elapsed,
-        //     regionSize: regionWidth * regionHeight
-        // };
     }
 
     /**

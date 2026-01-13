@@ -257,32 +257,13 @@ export class AADrawer {
       }
     }
     if (pixelsDrawn === 0) {
-      // return { pixels: 0, time: performance.now() - startTime };
       return;
     }
-    // extract and update region
-    // const regionWidth = maxX - minX + 1;
-    // const regionHeight = maxY - minY + 1;
-    // const regionData = AADrawer._extractRegion(
-    //   data,
-    //   width,
-    //   minX,
-    //   minY,
-    //   regionWidth,
-    //   regionHeight,
-    // );
-    // canvas.renderer.updateBufferData(
-    //   // dirty region tracking in c++
-    //   canvas.bufferId,
-    //   regionData,
-    //   minX,
-    //   minY,
-    //   regionWidth,
-    //   regionHeight,
-    // );
+    const tracker = canvas.dirtyTracker;
+    if (tracker) {
+      tracker.addRegion(minX, minY, maxX - minX + 1, maxY - minY + 1);
+    }
     canvas.needsUpload = true;
-    // const elapsed = performance.now() - startTime;
-    // return { pixels: pixelsDrawn, time: elapsed };
   }
   /**
    * Set pixel with alpha blending
@@ -357,30 +338,13 @@ export class AADrawer {
       }
     }
     if (pixelsDrawn === 0) {
-      // return { pixels: 0, time: performance.now() - startTime, radius: rad };
       return;
     }
-    // const regionWidth = maxX - minX + 1;
-    // const regionHeight = maxY - minY + 1;
-    // const regionData = AADrawer._extractRegion(
-    //   canvas.data,
-    //   canvas.width,
-    //   minX,
-    //   minY,
-    //   regionWidth,
-    //   regionHeight,
-    // );
-    // canvas.renderer.updateBufferData(
-    //   canvas.bufferId,
-    //   regionData,
-    //   minX,
-    //   minY,
-    //   regionWidth,
-    //   regionHeight,
-    // );
+    const tracker = canvas.dirtyTracker;
+    if (tracker) {
+      tracker.addRegion(minX, minY, maxX - minX + 1, maxY - minY + 1);
+    }
     canvas.needsUpload = true;
-    // const elapsed = performance.now() - startTime;
-    // return { pixels: pixelsDrawn, time: elapsed, radius: rad };
   }
   /**
    * * Anti-aliased filled circle
@@ -426,39 +390,12 @@ export class AADrawer {
       }
     }
     if (pixelsDrawn === 0) {
-      // return { pixels: 0, time: performance.now() - startTime };
       return;
     }
-    // const regionWidth = maxX - minX + 1;
-    // const regionHeight = maxY - minY + 1;
-    // const regionData = AADrawer._extractRegion(
-    //   canvas.data,
-    //   canvas.width,
-    //   minX,
-    //   minY,
-    //   regionWidth,
-    //   regionHeight,
-    // );
-    // canvas.renderer.updateBufferData(
-    //   canvas.bufferId,
-    //   regionData,
-    //   minX,
-    //   minY,
-    //   regionWidth,
-    //   regionHeight,
-    // );
+    const tracker = canvas.dirtyTracker;
+    if (tracker) {
+      tracker.addRegion(minX, minY, maxX - minX + 1, maxY - minY + 1);
+    }
     canvas.needsUpload = true;
-    // const elapsed = performance.now() - startTime;
-    // return { pixels: pixelsDrawn, time: elapsed };
   }
-  // static _extractRegion(data, bufferWidth, x, y, width, height) {
-  //   const region = new Uint8Array(width * height * 4);
-  //   for (let row = 0; row < height; row++) {
-  //     const srcOffset = ((y + row) * bufferWidth + x) * 4;
-  //     const dstOffset = row * width * 4;
-  //     const rowBytes = width * 4;
-  //     region.set(data.subarray(srcOffset, srcOffset + rowBytes), dstOffset);
-  //   }
-  //   return region;
-  // }
 }

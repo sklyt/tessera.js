@@ -430,27 +430,10 @@ export class BitmapFont {
 
         // Flush dirty region if any pixels were drawn
         if (dirtyMaxX >= 0) {
-            const regionWidth = dirtyMaxX - dirtyMinX + 1;
-            const regionHeight = dirtyMaxY - dirtyMinY + 1;
-            const regionData = new Uint8Array(regionWidth * regionHeight * 4);
-
-            // Extract region data (cache-friendly row-by-row copy)
-            for (let row = 0; row < regionHeight; row++) {
-                const srcOffset = ((dirtyMinY + row) * canvasWidth + dirtyMinX) * 4;
-                const dstOffset = row * regionWidth * 4;
-                regionData.set(
-                    canvasData.subarray(srcOffset, srcOffset + regionWidth * 4),
-                    dstOffset
-                );
+            const tracker = canvas.dirtyTracker;
+            if (tracker) {
+                tracker.addRegion(dirtyMinX, dirtyMinY, dirtyMaxX - dirtyMinX + 1, dirtyMaxY - dirtyMinY + 1);
             }
-
-            // Upload to GPU
-            this.renderer.updateBufferData(
-                canvas.bufferId,
-                regionData,
-                dirtyMinX, dirtyMinY,
-                regionWidth, regionHeight
-            );
             canvas.needsUpload = true;
         }
     }
@@ -459,27 +442,10 @@ export class BitmapFont {
      * Upload dirty region to GPU
      */
     uploadCanvasRegion(canvas, minX, minY, maxX, maxY) {
-        const regionWidth = maxX - minX + 1;
-        const regionHeight = maxY - minY + 1;
-
-        const regionData = new Uint8Array(regionWidth * regionHeight * 4);
-        for (let row = 0; row < regionHeight; row++) {
-            const srcOffset = ((minY + row) * canvas.width + minX) * 4;
-            const dstOffset = row * regionWidth * 4;
-            const rowBytes = regionWidth * 4;
-
-            regionData.set(
-                canvas.data.subarray(srcOffset, srcOffset + rowBytes),
-                dstOffset
-            );
+        const tracker = canvas.dirtyTracker;
+        if (tracker) {
+            tracker.addRegion(minX, minY, maxX - minX + 1, maxY - minY + 1);
         }
-
-        canvas.renderer.updateBufferData(
-            canvas.bufferId,
-            regionData,
-            minX, minY,
-            regionWidth, regionHeight
-        );
         canvas.needsUpload = true;
         canvas.upload();
     }

@@ -20,7 +20,7 @@ const getModulePaths = () => {
     } catch (e) {
         // Fall through to CJS
     }
-    
+
     // CJS fallback
     return {
         __filename: typeof __filename !== 'undefined' ? __filename : '',
@@ -96,13 +96,13 @@ function cleanupOldTempDirs(prefix = 'assets-extract', maxAgeMs = 24 * 60 * 60 *
     try {
         const root = path.join(os.tmpdir(), prefix);
         if (!fs.existsSync(root)) return;
-        
+
         const now = Date.now();
         for (const entry of fs.readdirSync(root)) {
             const dirPath = path.join(root, entry);
             // Skip current process ID
             if (entry.startsWith(`${process.pid}-`)) continue;
-            
+
             try {
                 const stats = fs.statSync(dirPath);
                 if (now - stats.mtimeMs > maxAgeMs) {
@@ -455,6 +455,7 @@ class Audio_ {
 
 
 export class Renderer {
+
     constructor() {
         /** @type {Input_} */
         this.input = new Input_();
@@ -463,6 +464,48 @@ export class Renderer {
         this.audio = new Audio_()
         /** @type {number} */
         this.targetFPS = 60;
+    }
+    /**
+     * 
+     * @param {string} title - window title
+     * @param {number} width 
+     * @param {number} height 
+     * @param {boolean} isSea - is running in single executable context 
+     * @param {()=> void} assetGetterSync - function to load assets
+     * @returns {[Renderer, {RESIZABLE: number, UNDECORATED: number, ALWAYS_RUN: number, VSYNC_HINT: number, MSAA_4X_HINT: number, hideConsole: ()=> void, showConsole: ()=> void}]}
+     */
+    static create(title, width, height, isSea = false, assetGetterSync = undefined) {
+
+
+        //          * @returns {{
+        //  *   Renderer: new(...args: any[]) => Renderer,
+        //  *   FULLSCREEN: number,
+        //  *   RESIZABLE: number,
+        //  *   UNDECORATED: number,
+        //  *   ALWAYS_RUN: number,
+        //  *   VSYNC_HINT: number,
+        //  *   MSAA_4X_HINT: number,
+        //  *   hideConsole: ()=> void,
+        //  *   showConsole: () => void,
+        //  * }}
+        const { Renderer, RESIZABLE, UNDECORATED, ALWAYS_RUN, VSYNC_HINT, MSAA_4X_HINT, hideConsole, showConsole } = isSea ? loadRendererSea({ assetGetterSync }) : loadRenderer()
+        this.ops = {
+            RESIZABLE,
+            UNDECORATED,
+            ALWAYS_RUN,
+            VSYNC_HINT,
+            MSAA_4X_HINT,
+            hideConsole,
+            showConsole
+        }
+        const renderer = new Renderer()
+        if (!renderer.initialize(width, height, title)) {
+            console.error("Failed to initialize renderer");
+            process.exit(1);
+        }
+
+        return [renderer, this.ops]
+
     }
 
     /**
@@ -759,6 +802,7 @@ export class Renderer {
 /**
  * Load the native renderer module.
  * The JSDoc return type tells Rollup/TS that the native exports include a constructor `Renderer`.
+ * @deprecated - use const [renderer, ops] = Renderer.create("Image", 800, 600)
  * @returns {{
  *   Renderer: new(...args: any[]) => Renderer,
  *   FULLSCREEN: number,
@@ -794,6 +838,7 @@ export function loadRenderer() {
 /**
  * Load the native renderer module.
  * The JSDoc return type tells Rollup/TS that the native exports include a constructor `Renderer`.
+ * @deprecated - use const [renderer, ops] = Renderer.create("Image", 800, 600)
  * @returns {{
  *   Renderer: new(...args: any[]) => Renderer,
  *   FULLSCREEN: number,
@@ -808,8 +853,8 @@ export function loadRenderer() {
  */
 export function loadRendererSea({ assetGetterSync = null } = {}) {
     const require = createRequire(__filename || import.meta.url);
-    
-     cleanupOldTempDirs('assets-extract');
+
+    cleanupOldTempDirs('assets-extract');
 
     // 1) dev: node-gyp-build
     try {
@@ -914,3 +959,5 @@ export function loadRendererSea({ assetGetterSync = null } = {}) {
 
     return require(nodeDest);
 }
+
+

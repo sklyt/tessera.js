@@ -67,25 +67,11 @@ export class ShapeDrawer {
 
         if (pixelsDrawn === 0) return { pixels: 0 };
 
-        // const regionWidth = maxX - minX + 1;
-        // const regionHeight = maxY - minY + 1;
-        // const regionData = ShapeDrawer._extractRegion(
-        //     data, bufferWidth, minX, minY, regionWidth, regionHeight
-        // );
-
-        // canvas.renderer.updateBufferData(
-        //     canvas.bufferId,
-        //     regionData,
-        //     minX, minY,
-        //     regionWidth, regionHeight
-        // );
-
+        const tracker = canvas.dirtyTracker;
+        if (tracker) {
+            tracker.addRegion(minX, minY, maxX - minX + 1, maxY - minY + 1);
+        }
         canvas.needsUpload = true;
-
-        // return { pixels: pixelsDrawn };
-        // const elapsed = performance.now() - startTime;
-        // return { pixels: pixelsDrawn, time: elapsed };
-
     }
 
     /**
@@ -212,23 +198,12 @@ export class ShapeDrawer {
         }
 
         if (pixelsDrawn === 0) return { pixels: 0 };
-        // const regionWidth = maxX - minX + 1;
-        // const regionHeight = maxY - minY + 1;
-        // const regionData = ShapeDrawer._extractRegion(
-        //     data, width, minX, minY, regionWidth, regionHeight
-        // );
 
-        // canvas.renderer.updateBufferData(
-        //     canvas.bufferId,
-        //     regionData,
-        //     minX, minY,
-        //     regionWidth, regionHeight
-        // );
-
+        const tracker = canvas.dirtyTracker;
+        if (tracker) {
+            tracker.addRegion(minX, minY, maxX - minX + 1, maxY - minY + 1);
+        }
         canvas.needsUpload = true;
-
-        // const elapsed = performance.now() - startTime;
-        // return { pixels: pixelsDrawn, time: elapsed, radius: rad };
     }
 
     /**
@@ -312,23 +287,11 @@ export class ShapeDrawer {
 
         if (pixelsDrawn === 0) return { pixels: 0 };
 
-        // const regionWidth = maxX - minX + 1;
-        // const regionHeight = maxY - minY + 1;
-        // const regionData = ShapeDrawer._extractRegion(
-        //     data, width, minX, minY, regionWidth, regionHeight
-        // );
-
-        // canvas.renderer.updateBufferData(
-        //     canvas.bufferId,
-        //     regionData,
-        //     minX, minY,
-        //     regionWidth, regionHeight
-        // );
-
+        const tracker = canvas.dirtyTracker;
+        if (tracker) {
+            tracker.addRegion(minX, minY, maxX - minX + 1, maxY - minY + 1);
+        }
         canvas.needsUpload = true;
-
-        // const elapsed = performance.now() - startTime;
-        // return { pixels: pixelsDrawn, time: elapsed };
     }
 
     /**
@@ -381,22 +344,11 @@ export class ShapeDrawer {
 
         if (pixelsDrawn === 0) return { pixels: 0 };
 
-        // const regionWidth = maxX - minX + 1;
-        // const regionHeight = maxY - minY + 1;
-        // const regionData = ShapeDrawer._extractRegion(
-        //     data, width, minX, minY, regionWidth, regionHeight
-        // );
-
-        // canvas.renderer.updateBufferData(
-        //     canvas.bufferId,
-        //     regionData,
-        //     minX, minY,
-        //     regionWidth, regionHeight
-        // );
-
+        const tracker = canvas.dirtyTracker;
+        if (tracker) {
+            tracker.addRegion(minX, minY, maxX - minX + 1, maxY - minY + 1);
+        }
         canvas.needsUpload = true;
-
-        // return { pixels: pixelsDrawn };
     }
 
 

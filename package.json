@@ -1,6 +1,6 @@
 {
   "name": "tessera.js",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "tabula cerata - a mutable frame buffer that you wipe and rewrite X times a second.",
   "type": "module",
   "main": "dist/cjs/index.cjs",

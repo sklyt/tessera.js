@@ -1,6 +1,7 @@
 
 
-
+import { PixelBuffer } from './canvas/pixel_buffer.js';
+import { CTRL_DIRTY_FLAG, CTRL_DIRTY_COUNT, CTRL_DIRTY_REGIONS, MAX_DIRTY_REGIONS } from './buffer_constants.js';
 
 
 // Helper: extract a rectangular region from a full RGBA buffer
@@ -15,99 +16,223 @@ function extractRegion(data, fullWidth, minX, minY, regionWidth, regionHeight) {
     return out;
 }
 
+
+// new zero copy control bufer tracker 
+
 export class DirtyRegionTracker {
-    constructor(canvas) {
-        this.canvas = canvas;
-        this.width = canvas.width;    // Cache dimensions
-        this.height = canvas.height;
-        this.reset();
+    constructor(controlBuffer) {
+        // controlBuffer is the Uint32Array pixel_buffer passed to C++
+        this.control = controlBuffer;
+        this.maxRegions = 256;
     }
 
-    reset() {
-        this.minX = this.width;       // Start inverted (any value will update)
-        this.minY = this.height;
-        this.maxX = -1;
-        this.maxY = -1;
-        this.modified = false;
+    addRegion(x, y, w, h) {
+        const count = Atomics.load(this.control, CTRL_DIRTY_COUNT); // CTRL_DIRTY_COUNT offset
+
+        if (count >= this.maxRegions) {
+            this.control[CTRL_DIRTY_REGIONS + 0] = 0;
+            this.control[CTRL_DIRTY_REGIONS + 1] = 0;
+            this.control[CTRL_DIRTY_REGIONS + 2] = 9999;
+            this.control[CTRL_DIRTY_REGIONS + 3] = 9999;
+            Atomics.store(this.control, CTRL_DIRTY_COUNT, 1);
+            return
+        }
+
+        const offset = 5 + (count * 4);
+        this.control[offset + 0] = x | 0;  // Ensure u32
+        this.control[offset + 1] = y | 0;
+        this.control[offset + 2] = w | 0;
+        this.control[offset + 3] = h | 0;
+
+        // Increment count
+        Atomics.store(this.control, CTRL_DIRTY_COUNT, count + 1);
     }
 
-    // Optimized: no Math.floor, no clamping, raw updates
-    markRect(x, y, w, h) {
-        const x0 = x | 0;
-        const y0 = y | 0;
-        const x1 = (x + w - 1) | 0;
-        const y1 = (y + h - 1) | 0;
-
-        // Update extremes (branch prediction friendly: usually all four update)
-        if (x0 < this.minX) this.minX = x0;
-        if (y0 < this.minY) this.minY = y0;
-        if (x1 > this.maxX) this.maxX = x1;
-        if (y1 > this.maxY) this.maxY = y1;
-
-        this.modified = true;
+    markDirty() {
+        Atomics.store(this.control, CTRL_DIRTY_FLAG, 1);  // CTRL_DIRTY_FLAG
     }
 
-    // kept for API compatibility, but internally just marks a 1x1 rect
-    mark(x, y) {
-        this.markRect(x, y, 1, 1);
+    clear() {
+        Atomics.store(this.control, CTRL_DIRTY_COUNT, 0);
+    }
+
+    optimize() {
+        const count = Atomics.load(this.control, CTRL_DIRTY_COUNT);
+        if (count <= 1) return;
+
+        // Simple optimization: merge regions that overlap
+        let writeIdx = 0;
+        for (let i = 0; i < count; i++) {
+            const offset = 5 + (i * 4);
+            let x = this.control[offset + 0];
+            let y = this.control[offset + 1];
+            let w = this.control[offset + 2];
+            let h = this.control[offset + 3];
+
+            // Check if this region overlaps with any previous
+            let merged = false;
+            for (let j = 0; j < writeIdx; j++) {
+                const prevOffset = 5 + (j * 4);
+                const px = this.control[prevOffset + 0];
+                const py = this.control[prevOffset + 1];
+                const pw = this.control[prevOffset + 2];
+                const ph = this.control[prevOffset + 3];
+
+                // Check overlap
+                if (!(x > px + pw || x + w < px || y > py + ph || y + h < py)) {
+                    // Merge: expand previous region to contain both
+                    const minX = Math.min(px, x);
+                    const minY = Math.min(py, y);
+                    const maxX = Math.max(px + pw, x + w);
+                    const maxY = Math.max(py + ph, y + h);
+
+                    this.control[prevOffset + 0] = minX;
+                    this.control[prevOffset + 1] = minY;
+                    this.control[prevOffset + 2] = maxX - minX;
+                    this.control[prevOffset + 3] = maxY - minY;
+
+                    merged = true;
+                    break;
+                }
+            }
+
+            if (!merged) {
+                // Copy region to write position
+                if (writeIdx !== i) {
+                    const writeOffset = 5 + (writeIdx * 4);
+                    this.control[writeOffset + 0] = x;
+                    this.control[writeOffset + 1] = y;
+                    this.control[writeOffset + 2] = w;
+                    this.control[writeOffset + 3] = h;
+                }
+                writeIdx++;
+            }
+        }
+
+        Atomics.store(this.control, CTRL_DIRTY_COUNT, writeIdx);
+    }
+
+}
+
+
+export class BatchedDirtyTracker extends DirtyRegionTracker {
+    constructor(controlBuffer) {
+        super(controlBuffer);
+        this.pendingFlush = false;
+    }
+
+    addRegion(x, y, w, h) {
+        super.addRegion(x, y, w, h);
+
+        // schedule flush if not already scheduled
+        if (!this.pendingFlush) {
+            this.pendingFlush = true;
+            queueMicrotask(() => this.flush());
+        }
     }
 
     flush() {
-        if (!this.modified) {
-            return null;
-        }
-
-        // Clamp to valid canvas bounds ONCE
-        const minX = Math.max(0, this.minX);
-        const minY = Math.max(0, this.minY);
-        const maxX = Math.min(this.width - 1, this.maxX);
-        const maxY = Math.min(this.height - 1, this.maxY);
-
-        // Validate bounds
-        if (minX > maxX || minY > maxY) {
-            this.reset();
-            return null;
-        }
-
-        const regionWidth = maxX - minX + 1;
-        const regionHeight = maxY - minY + 1;
-
-        // Extract region data
-        const regionData = this._extractRegion(minX, minY, regionWidth, regionHeight);
-
-        // Upload to GPU
-        this.canvas.renderer.updateBufferData(
-            this.canvas.bufferId,
-            regionData,
-            minX, minY,
-            regionWidth, regionHeight
-        );
-        this.canvas.needsUpload = true;
-
-        const result = { minX, minY, regionWidth, regionHeight };
-        this.reset();
-        return result;
-    }
-
-    // Optimized extraction: direct subarray slicing
-    _extractRegion(x, y, w, h) {
-        const data = this.canvas.data;
-        const canvasWidth = this.width;
-        const region = new Uint8Array(w * h * 4);
-
-        // Copy row by row (cache-friendly)
-        for (let row = 0; row < h; row++) {
-            const srcOffset = ((y + row) * canvasWidth + x) * 4;
-            const dstOffset = row * w * 4;
-            region.set(
-                data.subarray(srcOffset, srcOffset + w * 4),
-                dstOffset
-            );
-        }
-
-        return region;
+        this.pendingFlush = false;
+        this.optimize();
+        this.markDirty();
     }
 }
+
+// OLD COPY TRACKER
+
+// export class DirtyRegionTracker {
+//     constructor(canvas) {
+//         this.canvas = canvas;
+//         this.width = canvas.width;    // Cache dimensions
+//         this.height = canvas.height;
+//         this.reset();
+//     }
+
+//     reset() {
+//         this.minX = this.width;       // Start inverted (any value will update)
+//         this.minY = this.height;
+//         this.maxX = -1;
+//         this.maxY = -1;
+//         this.modified = false;
+//     }
+
+//     // Optimized: no Math.floor, no clamping, raw updates
+//     markRect(x, y, w, h) {
+//         const x0 = x | 0;
+//         const y0 = y | 0;
+//         const x1 = (x + w - 1) | 0;
+//         const y1 = (y + h - 1) | 0;
+
+//         // Update extremes (branch prediction friendly: usually all four update)
+//         if (x0 < this.minX) this.minX = x0;
+//         if (y0 < this.minY) this.minY = y0;
+//         if (x1 > this.maxX) this.maxX = x1;
+//         if (y1 > this.maxY) this.maxY = y1;
+
+//         this.modified = true;
+//     }
+
+//     // kept for API compatibility, but internally just marks a 1x1 rect
+//     mark(x, y) {
+//         this.markRect(x, y, 1, 1);
+//     }
+
+//     flush() {
+//         if (!this.modified) {
+//             return null;
+//         }
+
+//         // Clamp to valid canvas bounds ONCE
+//         const minX = Math.max(0, this.minX);
+//         const minY = Math.max(0, this.minY);
+//         const maxX = Math.min(this.width - 1, this.maxX);
+//         const maxY = Math.min(this.height - 1, this.maxY);
+
+//         // Validate bounds
+//         if (minX > maxX || minY > maxY) {
+//             this.reset();
+//             return null;
+//         }
+
+//         const regionWidth = maxX - minX + 1;
+//         const regionHeight = maxY - minY + 1;
+
+//         // Extract region data
+//         const regionData = this._extractRegion(minX, minY, regionWidth, regionHeight);
+
+//         // Upload to GPU
+//         this.canvas.renderer.updateBufferData(
+//             this.canvas.bufferId,
+//             regionData,
+//             minX, minY,
+//             regionWidth, regionHeight
+//         );
+//         this.canvas.needsUpload = true;
+
+//         const result = { minX, minY, regionWidth, regionHeight };
+//         this.reset();
+//         return result;
+//     }
+
+//     // Optimized extraction: direct subarray slicing
+//     _extractRegion(x, y, w, h) {
+//         const data = this.canvas.data;
+//         const canvasWidth = this.width;
+//         const region = new Uint8Array(w * h * 4);
+
+//         // Copy row by row (cache-friendly)
+//         for (let row = 0; row < h; row++) {
+//             const srcOffset = ((y + row) * canvasWidth + x) * 4;
+//             const dstOffset = row * w * 4;
+//             region.set(
+//                 data.subarray(srcOffset, srcOffset + w * 4),
+//                 dstOffset
+//             );
+//         }
+
+//         return region;
+//     }
+// }
 
 
 
@@ -644,7 +769,7 @@ export function normalizeRGBA(r, g, b, a) {
 
 
 /**
- * 
+ * @param {PixelBuffer} canvas
  * @param {{data: Uint8Array, width: number, height: number}} img 
  * @param {{data: Uint8Array, width: number, height: number}} canvas 
  * @param {"bilinear" | "nn"} algorithm - The resizing algorithm: 'bilinear' for bilinear interpolation or 'nn' for nearest neighbor. Defaults to 'bi'.
@@ -652,7 +777,7 @@ export function normalizeRGBA(r, g, b, a) {
  * @param {number} destHeight - The destination height. Defaults to canvas.height.
  */
 export function imageToCanvas(img, canvas, algorithm = 'bilinear', destWidth = canvas.width, destHeight = canvas.height) {
-    const tracker = new DirtyRegionTracker(canvas);
+    const tracker = canvas.dirtyTracker
     const cdata = canvas.data;
     const idata = img.data;
     const srcWidth = img.width;
@@ -665,7 +790,7 @@ export function imageToCanvas(img, canvas, algorithm = 'bilinear', destWidth = c
             const idxDest = (y * destWidth + x) * 4;
 
             if (algorithm === 'nn') {
-          
+
                 const srcX = Math.floor((x + 0.5) * scaleX);
                 const srcY = Math.floor((y + 0.5) * scaleY);
                 const clampedX = Math.max(0, Math.min(srcX, srcWidth - 1));
@@ -684,7 +809,7 @@ export function imageToCanvas(img, canvas, algorithm = 'bilinear', destWidth = c
                 const dx = srcX - x1;
                 const dy = srcY - y1;
 
-                for (let c = 0; c < 4; c++) { 
+                for (let c = 0; c < 4; c++) {
                     const p11 = idata[(y1 * srcWidth + x1) * 4 + c];
                     const p12 = idata[(y1 * srcWidth + x2) * 4 + c];
                     const p21 = idata[(y2 * srcWidth + x1) * 4 + c];
@@ -697,15 +822,19 @@ export function imageToCanvas(img, canvas, algorithm = 'bilinear', destWidth = c
             }
         }
     }
+    // writing to real canvas not cache
+    if (tracker) {
+        tracker.addRegion(0, 0, destWidth, destHeight);
+        canvas.needsUpload = true
+    }
 
-    tracker.markRect(0, 0, destWidth, destHeight);
-    tracker.flush();
+    // tracker.flush();
     // canvas.upload();
 }
 
 
 /**
- * 
+ * @param {PixelBuffer} canvas
  * @param {{data: Uint8Array, width: number, height: number}} atlas 
  * @param {{x: number, y: number, width: number, height: number}} srcRect 
  * @param {{data: Uint8Array, width: number, height: number}} canvas 
@@ -713,7 +842,7 @@ export function imageToCanvas(img, canvas, algorithm = 'bilinear', destWidth = c
  * @param {"bilinear" | "nn"} algorithm - The resizing algorithm: 'bi' for bilinear interpolation or 'nn' for nearest neighbor. Defaults to 'bi'.
  */
 export function drawAtlasRegionToCanvas(atlas, srcRect, canvas, destRect, algorithm = 'bilinear') {
-    const tracker = new DirtyRegionTracker(canvas);
+    const tracker = canvas.dirtyTracker
     const cdata = canvas.data;
     const adata = atlas.data;
     const atlasWidth = atlas.width;
@@ -762,8 +891,14 @@ export function drawAtlasRegionToCanvas(atlas, srcRect, canvas, destRect, algori
         }
     }
 
-    tracker.markRect(destRect.x, destRect.y, destRect.width, destRect.height);
-    tracker.flush();
+    if (tracker) {
+        tracker.addRegion(destRect.x, destRect.y, destRect.width, destRect.height);
+        canvas.needsUpload = true
+    }
+
+
+
+    // tracker.flush();
     // canvas.upload();
 }
 

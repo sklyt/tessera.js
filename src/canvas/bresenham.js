@@ -20,7 +20,7 @@ export class LineDrawer {
      * @returns 
      */
     static drawLine(canvas, x1, y1, x2, y2, r, g, b, a = 255, camera = undefined) {
-        const startTime = performance.now();
+        // const startTime = performance.now();
 
         // Convert to integers
         x1 = Math.floor(x1); y1 = Math.floor(y1);
@@ -89,27 +89,27 @@ export class LineDrawer {
         }
 
         // Extract and update only the affected region
-        const regionWidth = maxX - minX + 1;
-        const regionHeight = maxY - minY + 1;
-        const regionData = LineDrawer._extractRegion(
-            data, width, minX, minY, regionWidth, regionHeight
-        );
+        // const regionWidth = maxX - minX + 1;
+        // const regionHeight = maxY - minY + 1;
+        // const regionData = LineDrawer._extractRegion(
+        //     data, width, minX, minY, regionWidth, regionHeight
+        // );
 
-        canvas.renderer.updateBufferData(
-            canvas.bufferId,
-            regionData,
-            minX, minY,
-            regionWidth, regionHeight
-        );
+        // canvas.renderer.updateBufferData(
+        //     canvas.bufferId,
+        //     regionData,
+        //     minX, minY,
+        //     regionWidth, regionHeight
+        // );
 
         canvas.needsUpload = true;
 
-        const elapsed = performance.now() - startTime;
-        return {
-            pixels: pixelCount,
-            time: elapsed,
-            regionSize: regionWidth * regionHeight
-        };
+        // const elapsed = performance.now() - startTime;
+        // return {
+        //     pixels: pixelCount,
+        //     time: elapsed,
+        //     regionSize: regionWidth * regionHeight
+        // };
     }
 
     /**
@@ -131,7 +131,7 @@ export class LineDrawer {
         x1 = Math.floor(x1); y1 = Math.floor(y1);
         x2 = Math.floor(x2); y2 = Math.floor(y2);
         thickness = Math.max(1, Math.floor(thickness));
-        const startTime = performance.now();
+        // const startTime = performance.now();
 
         // Create circular brush stamp (once per thickness)
         const radius = Math.ceil(thickness / 2);
@@ -175,32 +175,33 @@ export class LineDrawer {
         }
 
         if (pixelsDrawn === 0) {
-            return { pixels: 0, linePoints: points.length, regionSize: 0 };
+            //  { pixels: 0, linePoints: points.length, regionSize: 0 };
+            return
         }
 
         // Extract and update the affected region
-        const regionWidth = maxX - minX + 1;
-        const regionHeight = maxY - minY + 1;
-        const regionData = LineDrawer._extractRegion(
-            data, width, minX, minY, regionWidth, regionHeight
-        );
+        // const regionWidth = maxX - minX + 1;
+        // const regionHeight = maxY - minY + 1;
+        // const regionData = LineDrawer._extractRegion(
+        //     data, width, minX, minY, regionWidth, regionHeight
+        // );
 
-        canvas.renderer.updateBufferData(
-            canvas.bufferId,
-            regionData,
-            minX, minY,
-            regionWidth, regionHeight
-        );
+        // canvas.renderer.updateBufferData(
+        //     canvas.bufferId,
+        //     regionData,
+        //     minX, minY,
+        //     regionWidth, regionHeight
+        // );
 
         canvas.needsUpload = true;
 
-        const elapsed = performance.now() - startTime;
-        return {
-            pixels: pixelsDrawn,
-            linePoints: points.length,
-            time: elapsed,
-            regionSize: regionWidth * regionHeight
-        };
+        // const elapsed = performance.now() - startTime;
+        // return {
+        //     pixels: pixelsDrawn,
+        //     linePoints: points.length,
+        //     time: elapsed,
+        //     regionSize: regionWidth * regionHeight
+        // };
     }
 
     /**
@@ -303,21 +304,21 @@ export class LineDrawer {
      * Extract a rectangular region from buffer
      * Critical for region-based updates
      */
-    static _extractRegion(data, bufferWidth, x, y, width, height) {
-        const region = new Uint8Array(width * height * 4);
+    // static _extractRegion(data, bufferWidth, x, y, width, height) {
+    //     const region = new Uint8Array(width * height * 4);
 
-        for (let row = 0; row < height; row++) {
-            const srcOffset = ((y + row) * bufferWidth + x) * 4;
-            const dstOffset = row * width * 4;
-            const rowBytes = width * 4;
+    //     for (let row = 0; row < height; row++) {
+    //         const srcOffset = ((y + row) * bufferWidth + x) * 4;
+    //         const dstOffset = row * width * 4;
+    //         const rowBytes = width * 4;
 
-            // Fast copy: use TypedArray.set instead of loop
-            region.set(
-                data.subarray(srcOffset, srcOffset + rowBytes),
-                dstOffset
-            );
-        }
+    //         // Fast copy: use TypedArray.set instead of loop
+    //         region.set(
+    //             data.subarray(srcOffset, srcOffset + rowBytes),
+    //             dstOffset
+    //         );
+    //     }
 
-        return region;
-    }
+    //     return region;
+    // }
 }

@@ -78,6 +78,7 @@ function cleanupDirBestEffort(dir) {
     try {
         // attempt to remove files first (ignore failures)
         if (fs.existsSync(dir)) {
+            console.log(`trying to clean temp: ${dir}`)
             for (const f of fs.readdirSync(dir)) {
                 const p = path.join(dir, f);
                 try { fs.unlinkSync(p); } catch (e) { /* ignore */ }
@@ -88,6 +89,28 @@ function cleanupDirBestEffort(dir) {
         // ignore
         console.log(e)
     }
+}
+
+
+function cleanupOldTempDirs(prefix = 'assets-extract', maxAgeMs = 24 * 60 * 60 * 1000) {
+    try {
+        const root = path.join(os.tmpdir(), prefix);
+        if (!fs.existsSync(root)) return;
+        
+        const now = Date.now();
+        for (const entry of fs.readdirSync(root)) {
+            const dirPath = path.join(root, entry);
+            // Skip current process ID
+            if (entry.startsWith(`${process.pid}-`)) continue;
+            
+            try {
+                const stats = fs.statSync(dirPath);
+                if (now - stats.mtimeMs > maxAgeMs) {
+                    cleanupDirBestEffort(dirPath);
+                }
+            } catch (e) { /* ignore */ }
+        }
+    } catch (e) { /* ignore */ }
 }
 
 
@@ -778,12 +801,16 @@ export function loadRenderer() {
  *   UNDECORATED: number,
  *   ALWAYS_RUN: number,
  *   VSYNC_HINT: number,
- *   MSAA_4X_HINT: number
+ *   MSAA_4X_HINT: number,
+ *   hideConsole: ()=> void,
+ *   showConsole: () => void,
  * }}
  */
 export function loadRendererSea({ assetGetterSync = null } = {}) {
     const require = createRequire(__filename || import.meta.url);
     
+     cleanupOldTempDirs('assets-extract');
+
     // 1) dev: node-gyp-build
     try {
         return require('node-gyp-build')(path.join(__dirname, '..'));
@@ -879,9 +906,9 @@ export function loadRendererSea({ assetGetterSync = null } = {}) {
     }
 
     // schedule best-effort cleanup at process exit (ignore errors)
-    process.on('exit', () => {
-        try { cleanupDirBestEffort(tempDir); } catch (e) { /* ignore */ }
-    });
+    // process.on('exit', () => {
+    //     try { cleanupDirBestEffort(tempDir); } catch (e) { /* ignore */ }
+    // });
 
     // console.log(nodeDest);
 

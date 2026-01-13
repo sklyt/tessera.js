@@ -1,7 +1,7 @@
 import { PixelBuffer } from "./pixel_buffer.js";
 import { shouldDrawPixel } from "./utils.js";
 import { Camera } from "../camera/index.js"
-
+// TODO: add region tracker for all primitives
 export class AADrawer {
   /**
    * Wu's line algorithm - anti-aliased line drawing
@@ -261,25 +261,25 @@ export class AADrawer {
       return;
     }
     // extract and update region
-    const regionWidth = maxX - minX + 1;
-    const regionHeight = maxY - minY + 1;
-    const regionData = AADrawer._extractRegion(
-      data,
-      width,
-      minX,
-      minY,
-      regionWidth,
-      regionHeight,
-    );
-    canvas.renderer.updateBufferData(
-      // dirty region tracking in c++
-      canvas.bufferId,
-      regionData,
-      minX,
-      minY,
-      regionWidth,
-      regionHeight,
-    );
+    // const regionWidth = maxX - minX + 1;
+    // const regionHeight = maxY - minY + 1;
+    // const regionData = AADrawer._extractRegion(
+    //   data,
+    //   width,
+    //   minX,
+    //   minY,
+    //   regionWidth,
+    //   regionHeight,
+    // );
+    // canvas.renderer.updateBufferData(
+    //   // dirty region tracking in c++
+    //   canvas.bufferId,
+    //   regionData,
+    //   minX,
+    //   minY,
+    //   regionWidth,
+    //   regionHeight,
+    // );
     canvas.needsUpload = true;
     // const elapsed = performance.now() - startTime;
     // return { pixels: pixelsDrawn, time: elapsed };
@@ -360,24 +360,24 @@ export class AADrawer {
       // return { pixels: 0, time: performance.now() - startTime, radius: rad };
       return;
     }
-    const regionWidth = maxX - minX + 1;
-    const regionHeight = maxY - minY + 1;
-    const regionData = AADrawer._extractRegion(
-      canvas.data,
-      canvas.width,
-      minX,
-      minY,
-      regionWidth,
-      regionHeight,
-    );
-    canvas.renderer.updateBufferData(
-      canvas.bufferId,
-      regionData,
-      minX,
-      minY,
-      regionWidth,
-      regionHeight,
-    );
+    // const regionWidth = maxX - minX + 1;
+    // const regionHeight = maxY - minY + 1;
+    // const regionData = AADrawer._extractRegion(
+    //   canvas.data,
+    //   canvas.width,
+    //   minX,
+    //   minY,
+    //   regionWidth,
+    //   regionHeight,
+    // );
+    // canvas.renderer.updateBufferData(
+    //   canvas.bufferId,
+    //   regionData,
+    //   minX,
+    //   minY,
+    //   regionWidth,
+    //   regionHeight,
+    // );
     canvas.needsUpload = true;
     // const elapsed = performance.now() - startTime;
     // return { pixels: pixelsDrawn, time: elapsed, radius: rad };
@@ -429,36 +429,36 @@ export class AADrawer {
       // return { pixels: 0, time: performance.now() - startTime };
       return;
     }
-    const regionWidth = maxX - minX + 1;
-    const regionHeight = maxY - minY + 1;
-    const regionData = AADrawer._extractRegion(
-      canvas.data,
-      canvas.width,
-      minX,
-      minY,
-      regionWidth,
-      regionHeight,
-    );
-    canvas.renderer.updateBufferData(
-      canvas.bufferId,
-      regionData,
-      minX,
-      minY,
-      regionWidth,
-      regionHeight,
-    );
+    // const regionWidth = maxX - minX + 1;
+    // const regionHeight = maxY - minY + 1;
+    // const regionData = AADrawer._extractRegion(
+    //   canvas.data,
+    //   canvas.width,
+    //   minX,
+    //   minY,
+    //   regionWidth,
+    //   regionHeight,
+    // );
+    // canvas.renderer.updateBufferData(
+    //   canvas.bufferId,
+    //   regionData,
+    //   minX,
+    //   minY,
+    //   regionWidth,
+    //   regionHeight,
+    // );
     canvas.needsUpload = true;
     // const elapsed = performance.now() - startTime;
     // return { pixels: pixelsDrawn, time: elapsed };
   }
-  static _extractRegion(data, bufferWidth, x, y, width, height) {
-    const region = new Uint8Array(width * height * 4);
-    for (let row = 0; row < height; row++) {
-      const srcOffset = ((y + row) * bufferWidth + x) * 4;
-      const dstOffset = row * width * 4;
-      const rowBytes = width * 4;
-      region.set(data.subarray(srcOffset, srcOffset + rowBytes), dstOffset);
-    }
-    return region;
-  }
+  // static _extractRegion(data, bufferWidth, x, y, width, height) {
+  //   const region = new Uint8Array(width * height * 4);
+  //   for (let row = 0; row < height; row++) {
+  //     const srcOffset = ((y + row) * bufferWidth + x) * 4;
+  //     const dstOffset = row * width * 4;
+  //     const rowBytes = width * 4;
+  //     region.set(data.subarray(srcOffset, srcOffset + rowBytes), dstOffset);
+  //   }
+  //   return region;
+  // }
 }

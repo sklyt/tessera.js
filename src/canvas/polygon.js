@@ -79,26 +79,26 @@ export class PolygonDrawer {
 
         if (pixelsDrawn === 0) return { pixels: 0 };
 
-        const regionWidth = maxX - minX + 1;
-        const regionHeight = maxY - minY + 1;
-        const regionData = PolygonDrawer._extractRegion(
-            data, width, minX, minY, regionWidth, regionHeight
-        );
+        // const regionWidth = maxX - minX + 1;
+        // const regionHeight = maxY - minY + 1;
+        // const regionData = PolygonDrawer._extractRegion(
+        //     data, width, minX, minY, regionWidth, regionHeight
+        // );
 
-        canvas.renderer.updateBufferData(
-            canvas.bufferId,
-            regionData,
-            minX, minY,
-            regionWidth, regionHeight
-        );
+        // canvas.renderer.updateBufferData(
+        //     canvas.bufferId,
+        //     regionData,
+        //     minX, minY,
+        //     regionWidth, regionHeight
+        // );
 
         canvas.needsUpload = true;
 
-        return {
-            pixels: pixelsDrawn,
-            vertices: points.length,
-            scanlines: maxY - minY + 1
-        };
+        // return {
+        //     pixels: pixelsDrawn,
+        //     vertices: points.length,
+        //     scanlines: maxY - minY + 1
+        // };
     }
 
     /**
@@ -249,21 +249,21 @@ export class PolygonDrawer {
         return points;
     }
 
-    static _extractRegion(data, bufferWidth, x, y, width, height) {
-        const region = new Uint8Array(width * height * 4);
+    // static _extractRegion(data, bufferWidth, x, y, width, height) {
+    //     const region = new Uint8Array(width * height * 4);
 
-        for (let row = 0; row < height; row++) {
-            const srcOffset = ((y + row) * bufferWidth + x) * 4;
-            const dstOffset = row * width * 4;
-            const rowBytes = width * 4;
+    //     for (let row = 0; row < height; row++) {
+    //         const srcOffset = ((y + row) * bufferWidth + x) * 4;
+    //         const dstOffset = row * width * 4;
+    //         const rowBytes = width * 4;
 
-            region.set(
-                data.subarray(srcOffset, srcOffset + rowBytes),
-                dstOffset
-            );
-        }
+    //         region.set(
+    //             data.subarray(srcOffset, srcOffset + rowBytes),
+    //             dstOffset
+    //         );
+    //     }
 
-        return region;
-    }
+    //     return region;
+    // }
 }
 

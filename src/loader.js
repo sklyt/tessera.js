@@ -277,9 +277,10 @@ class Audio_ {
     /**
      * Load music (streamed) from disk
      * @param {string} filePath
+     * @param {boolean} loop 
      * @returns {number} handle (0 on failure)
      */
-    loadMusic(filePath) { }
+    loadMusic(filePath, loop) { }
 
     /**
      * Load music (streamed) from memory

@@ -1,4 +1,4 @@
-import { CTRL_JS_WRITE_IDX, CONTROL_BUFFER_SIZE } from '../buffer_constants.js';
+import { CTRL_JS_WRITE_IDX, CONTROL_BUFFER_SIZE, CTRL_CAM_FRUSTUM_BOTTOM, CTRL_CAM_FRUSTUM_LEFT, CTRL_CAM_FRUSTUM_RIGHT, CTRL_CAM_FRUSTUM_TOP, CTRL_CAM_ROTATION, CTRL_CAM_VIEW_HEIGHT, CTRL_CAM_VIEW_WIDTH, CTRL_CAM_WORLD_X, CTRL_CAM_WORLD_Y, CTRL_CAM_ZOOM } from '../buffer_constants.js';
 import { DirtyRegionTracker } from '../render_helpers.js';
 
 
@@ -51,6 +51,7 @@ export class PixelBuffer {
 
         this.controlBuffer = new Uint32Array(new ArrayBuffer(CONTROL_BUFFER_SIZE));
 
+
         // iinitialize zero copy shared memory in C++
         this.textureId = renderer.initSharedBuffers(
             this.buffers[0],
@@ -60,6 +61,7 @@ export class PixelBuffer {
             width,
             height
         );
+         this.f32View = new Float32Array(this.controlBuffer.buffer);
 
         //    console.log(this.textureId)
         this.views = [
@@ -82,9 +84,9 @@ export class PixelBuffer {
      * @param {number} w 
      * @param {number} h 
      */
-    markRegion(x, y , w  = 1, h = 1){
-      this.dirtyTracker.addRegion(x, y, w, h)
-      this.needsUpload = true
+    markRegion(x, y, w = 1, h = 1) {
+        this.dirtyTracker.addRegion(x, y, w, h)
+        this.needsUpload = true
     }
 
     getCurrentBuffer() {
@@ -223,7 +225,7 @@ export class PixelBuffer {
  * @param {number} dx - Dest X (default 0)
  * @param {number} dy - Dest Y (default 0)
  */
-blitFrom(source, sx = 0, sy = 0, sw = source.width, sh = source.height, dx = 0, dy = 0) {
+    blitFrom(source, sx = 0, sy = 0, sw = source.width, sh = source.height, dx = 0, dy = 0) {
         const srcData = source.data;
         const dstData = this.data;
 
@@ -260,7 +262,29 @@ blitFrom(source, sx = 0, sy = 0, sw = source.width, sh = source.height, dx = 0, 
     blit(source) {
         this.blitFrom(source, 0, 0, source.width, source.height, 0, 0);
     }
+
+
+    updateCamera(camera) {
+        if (!camera) return;
+
+        camera.updateWorldTransform(); // Ensure fresh
+
+        // Write as Float32 view over same buffer
+
+
+        this.f32View[CTRL_CAM_WORLD_X] = camera.worldPosition.x;
+        this.f32View[CTRL_CAM_WORLD_Y] = camera.worldPosition.y;
+        this.f32View[CTRL_CAM_ZOOM] = camera.worldZoom;
+        this.f32View[CTRL_CAM_VIEW_WIDTH] = camera.viewWidth;
+        this.f32View[CTRL_CAM_VIEW_HEIGHT] = camera.viewHeight;
+        this.f32View[CTRL_CAM_ROTATION] = camera.worldRotation;
+        this.f32View[CTRL_CAM_FRUSTUM_LEFT] = camera.frustum.left;
+        this.f32View[CTRL_CAM_FRUSTUM_RIGHT] = camera.frustum.right;
+        this.f32View[CTRL_CAM_FRUSTUM_TOP] = camera.frustum.top;
+        this.f32View[CTRL_CAM_FRUSTUM_BOTTOM] = camera.frustum.bottom;
+    }
 }
+
 
 
 

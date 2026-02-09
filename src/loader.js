@@ -489,7 +489,7 @@ export class Renderer {
         //  *   hideConsole: ()=> void,
         //  *   showConsole: () => void,
         //  * }}
-        const { Renderer,FULLSCREEN, RESIZABLE, UNDECORATED, ALWAYS_RUN, VSYNC_HINT, MSAA_4X_HINT, hideConsole, showConsole } = isSea ? loadRendererSea({ assetGetterSync }) : loadRenderer()
+        const { Renderer, FULLSCREEN, RESIZABLE, UNDECORATED, ALWAYS_RUN, VSYNC_HINT, MSAA_4X_HINT, hideConsole, showConsole } = isSea ? loadRendererSea({ assetGetterSync }) : loadRenderer()
         this.ops = {
             FULLSCREEN,
             RESIZABLE,
@@ -799,6 +799,562 @@ export class Renderer {
      * poll for input
      */
     GetInput() { }
+
+    /**
+     * Close the window
+     * @returns {void}
+     */
+    closeWindow() { }
+
+    /**
+     * Check if window is ready
+     * @returns {boolean}
+     */
+    isWindowReady() { }
+
+    /**
+     * Check if window is in fullscreen mode
+     * @returns {boolean}
+     */
+    isWindowFullscreen() { }
+
+    /**
+     * Check if window is hidden
+     * @returns {boolean}
+     */
+    isWindowHidden() { }
+
+    /**
+     * Check if window is minimized
+     * @returns {boolean}
+     */
+    isWindowMinimized() { }
+
+    /**
+     * Check if window is maximized
+     * @returns {boolean}
+     */
+    isWindowMaximized() { }
+
+    /**
+     * Check if window is focused
+     * @returns {boolean}
+     */
+    isWindowFocused() { }
+
+    /**
+     * Check if window has been resized
+     * @returns {boolean}
+     */
+    isWindowResized() { }
+
+    /**
+     * Check if window has a specific state
+     * @param {number} flag
+     * @returns {boolean}
+     */
+    isWindowState(flag) { }
+
+    /**
+     * Clear window state flags
+     * @param {number} flags
+     * @returns {void}
+     */
+    clearWindowState(flags) { }
+
+    /**
+     * Toggle fullscreen mode
+     * @returns {void}
+     */
+    toggleFullscreen() { }
+
+    /**
+     * Toggle borderless windowed mode
+     * @returns {void}
+     */
+    toggleBorderlessWindowed() { }
+
+    /**
+     * Maximize the window
+     * @returns {void}
+     */
+    maximizeWindow() { }
+
+    /**
+     * Minimize the window
+     * @returns {void}
+     */
+    minimizeWindow() { }
+
+    /**
+     * Restore the window
+     * @returns {void}
+     */
+    restoreWindow() { }
+
+    /**
+     * Set window icon from image path
+     * @param {string} imagePath
+     * @returns {void}
+     */
+    setWindowIcon(imagePath) { }
+
+    /**
+     * Set window icons from array of image paths
+     * @param {string[]} imagePaths
+     * @returns {void}
+     */
+    setWindowIcons(imagePaths) { }
+
+    /**
+     * Set the window title
+     * @param {string} title
+     * @returns {void}
+     */
+    setWindowTitle(title) { }
+
+    /**
+     * Set window position
+     * @param {number} x
+     * @param {number} y
+     * @returns {void}
+     */
+    setWindowPosition(x, y) { }
+
+    /**
+     * Set the monitor for the window
+     * @param {number} monitor
+     * @returns {void}
+     */
+    setWindowMonitor(monitor) { }
+
+    /**
+     * Set minimum window size
+     * @param {number} width
+     * @param {number} height
+     * @returns {void}
+     */
+    setWindowMinSize(width, height) { }
+
+    /**
+     * Set maximum window size
+     * @param {number} width
+     * @param {number} height
+     * @returns {void}
+     */
+    setWindowMaxSize(width, height) { }
+
+    /**
+     * Set window size
+     * @param {number} width
+     * @param {number} height
+     * @returns {void}
+     */
+    setWindowSize(width, height) { }
+
+    /**
+     * Set window opacity (0..1)
+     * @param {number} opacity
+     * @returns {void}
+     */
+    setWindowOpacity(opacity) { }
+
+    /**
+     * Set window focus
+     * @returns {void}
+     */
+    setWindowFocused() { }
+
+    /**
+     * Get the window handle
+     * @returns {number}
+     */
+    getWindowHandle() { }
+
+    /**
+     * Get screen width
+     * @returns {number}
+     */
+    getScreenWidth() { }
+
+    /**
+     * Get screen height
+     * @returns {number}
+     */
+    getScreenHeight() { }
+
+    /**
+     * Get render width
+     * @returns {number}
+     */
+    getRenderWidth() { }
+
+    /**
+     * Get render height
+     * @returns {number}
+     */
+    getRenderHeight() { }
+
+    /**
+     * Get monitor count
+     * @returns {number}
+     */
+    getMonitorCount() { }
+
+    /**
+     * Get current monitor
+     * @returns {number}
+     */
+    getCurrentMonitor() { }
+
+    /**
+     * Get monitor position
+     * @param {number} monitor
+     * @returns {Vec2}
+     */
+    getMonitorPosition(monitor) { }
+
+    /**
+     * Get monitor width
+     * @param {number} monitor
+     * @returns {number}
+     */
+    getMonitorWidth(monitor) { }
+
+    /**
+     * Get monitor height
+     * @param {number} monitor
+     * @returns {number}
+     */
+    getMonitorHeight(monitor) { }
+
+    /**
+     * Get monitor physical width
+     * @param {number} monitor
+     * @returns {number}
+     */
+    getMonitorPhysicalWidth(monitor) { }
+
+    /**
+     * Get monitor physical height
+     * @param {number} monitor
+     * @returns {number}
+     */
+    getMonitorPhysicalHeight(monitor) { }
+
+    /**
+     * Get monitor refresh rate
+     * @param {number} monitor
+     * @returns {number}
+     */
+    getMonitorRefreshRate(monitor) { }
+
+    /**
+     * Get window position
+     * @returns {Vec2}
+     */
+    getWindowPosition() { }
+
+    /**
+     * Get window scale DPI
+     * @returns {Vec2}
+     */
+    getWindowScaleDPI() { }
+
+    /**
+     * Get monitor name
+     * @param {number} monitor
+     * @returns {string}
+     */
+    getMonitorName(monitor) { }
+
+    /**
+     * Set clipboard text
+     * @param {string} text
+     * @returns {void}
+     */
+    setClipboardText(text) { }
+
+    /**
+     * Get clipboard text
+     * @returns {string}
+     */
+    getClipboardText() { }
+
+    /**
+     * Get clipboard image
+     * @returns {Image}
+     */
+    getClipboardImage() { }
+
+    /**
+     * Enable event waiting
+     * @returns {void}
+     */
+    enableEventWaiting() { }
+
+    /**
+     * Disable event waiting
+     * @returns {void}
+     */
+    disableEventWaiting() { }
+
+    /**
+     * Show cursor
+     * @returns {void}
+     */
+    showCursor() { }
+
+    /**
+     * Hide cursor
+     * @returns {void}
+     */
+    hideCursor() { }
+
+    /**
+     * Check if cursor is hidden
+     * @returns {boolean}
+     */
+    isCursorHidden() { }
+
+    /**
+     * Enable cursor
+     * @returns {void}
+     */
+    enableCursor() { }
+
+    /**
+     * Disable cursor
+     * @returns {void}
+     */
+    disableCursor() { }
+
+    /**
+     * Check if cursor is on screen
+     * @returns {boolean}
+     */
+    isCursorOnScreen() { }
+
+    // ============================================================================
+    // Sprite/Atlas-related methods
+    // ============================================================================
+
+    /**
+     * Load a sprite atlas from file
+     * @param {string} path
+     * @returns {number} atlasId (0 on failure)
+     */
+    loadAtlas(path) { }
+
+    /**
+     * Get a pixel value from an atlas
+     * @param {number} atlasId
+     * @param {number} x
+     * @param {number} y
+     * @returns {number} pixel value
+     */
+    getAtlasPixel(atlasId, x, y) { }
+
+    /**
+     * Check if an atlas is opaque
+     * @param {number} atlasId
+     * @returns {boolean}
+     */
+    isAtlasOpaque(atlasId) { }
+
+    /**
+     * Get atlas data (width, height, and pixel data)
+     * @param {number} atlasId
+     * @returns {{width: number, height: number, data: Uint8Array}}
+     */
+    getAtlasData(atlasId) { }
+
+    /**
+     * Get atlas data and free it from memory
+     * @param {number} atlasId
+     * @returns {{width: number, height: number, data: Uint8Array}}
+     */
+    getAtlasDataAndFree(atlasId) { }
+
+    /**
+     * Free an atlas from memory
+     * @param {number} atlasId
+     * @returns {void}
+     */
+    freeAtlas(atlasId) { }
+
+    /**
+     * Create a sprite from an atlas
+     * @param {number} atlasId
+     * @param {number} frameWidth
+     * @param {number} frameHeight
+     * @param {number} frameCount
+     * @param {boolean} opaque
+     * @returns {number} spriteId (0 on failure)
+     * @example
+     * ```js
+     * const spriteId = renderer.createSprite(atlasId, 32, 32, 8, true);
+     * ```
+     */
+    createSprite(atlasId, frameWidth, frameHeight, frameCount, opaque) { }
+
+    /**
+     * Update sprite properties
+     * @param {number} spriteId
+     * @param {number} x
+     * @param {number} y
+     * @param {number} rotation
+     * @param {number} scaleX
+     * @param {number} scaleY
+     * @param {number} frame
+     * @param {boolean} flipH
+     * @param {boolean} flipV
+     * @returns {void}
+     * @example
+     * ```js
+     * renderer.updateSprite(spriteId, 400, 300, 0, 1.0, 1.0, 0, false, false);
+     * ```
+     */
+    updateSprite(spriteId, x, y, rotation, scaleX, scaleY, frame, flipH, flipV) { }
+
+    /**
+     * Draw a sprite to a pixel buffer
+     * @param {number} spriteId
+     * @param {number} bufRefId
+     * @returns {void}
+     */
+    drawSprite(spriteId, bufRefId) { }
+
+    /**
+     * Destroy a sprite and free its resources
+     * @param {number} spriteId
+     * @returns {void}
+     */
+    destroySprite(spriteId) { }
+
+    /**
+     * Create a sprite with predefined animations
+     * @param {number} atlasId
+     * @param {number} frameWidth
+     * @param {number} frameHeight
+     * @param {Object<string, {frames: number[], fps: number, loop: boolean}>} animations
+     * @param {boolean} opaque
+     * @returns {number} spriteId
+     * @example
+     * ```js
+     * const spriteId = renderer.createSpriteWithAnimations(atlasId, 32, 32, {
+     *     walk: {
+     *         frames: [0, 1, 2, 3],
+     *         fps: 6,
+     *         loop: true
+     *     },
+     *     run: {
+     *         frames: [4, 5, 6, 7],
+     *         fps: 12,
+     *         loop: true
+     *     }
+     * }, true);
+     * ```
+     */
+    createSpriteWithAnimations(atlasId, frameWidth, frameHeight, animations, opaque) { }
+
+    /**
+     * Play an animation on a sprite
+     * @param {number} spriteId
+     * @param {string} animName
+     * @returns {void}
+     * @example
+     * ```js
+     * renderer.playAnimation(spriteId, "walk");
+     * ```
+     */
+    playAnimation(spriteId, animName) { }
+
+    /**
+     * Update all sprite animations by delta time
+     * @param {number} deltaTime
+     * @returns {void}
+     */
+    updateSpriteAnimations(deltaTime) { }
+
+    /**
+     * Create an animator with multiple animations
+     * @param {string[]} animNames
+     * @param {string[][]} framePaths
+     * @param {number[]} fpsList
+     * @param {boolean[]} loopList
+     * @returns {number} animatorId
+     * @example
+     * ```js
+const animatorId = renderer.createAnimator({
+    up: {
+        frames: [
+            "./assets/playerGrey_up1.png",
+            "./assets/playerGrey_up2.png"
+        ],
+        fps: 6,
+        loop: true
+    },
+    walk: {
+        frames: [
+            "./assets/playerGrey_walk1.png",
+            "./assets/playerGrey_walk2.png"
+        ],
+        fps: 6,
+        loop: true
+    }
+});
+     * ```
+     */
+    createAnimator(animNames, framePaths, fpsList, loopList) { }
+
+    /**
+     * Update animator position and properties
+     * @param {number} animatorId
+     * @param {number} x
+     * @param {number} y
+     * @param {number} rotation
+     * @param {number} scaleX
+     * @param {number} scaleY
+     * @param {boolean} flipH
+     * @param {boolean} flipV
+     * @returns {void}
+     */
+    updateAnimator(animatorId, x, y, rotation, scaleX, scaleY, flipH, flipV) { }
+
+    /**
+     * Play an animation on an animator
+     * @param {number} animatorId
+     * @param {string} animName
+     * @returns {void}
+     * @example
+     * ```js
+     * renderer.playAnimatorAnimation(animatorId, "walk");
+     * ```
+     */
+    playAnimatorAnimation(animatorId, animName) { }
+
+    /**
+     * Draw an animator to a pixel buffer
+     * @param {number} animatorId
+     * @param {number} bufRefId
+     * @returns {void}
+     */
+    drawAnimator(animatorId, bufRefId) { }
+
+    /**
+     * Update all animators by delta time
+     * @param {number} deltaTime
+     * @returns {void}
+     */
+    updateAnimators(deltaTime) { }
+
+    /**
+     * Destroy an animator and free its resources
+     * @param {number} animatorId
+     * @returns {void}
+     */
+    destroyAnimator(animatorId) { }
 }
 
 /**

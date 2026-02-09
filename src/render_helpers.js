@@ -28,7 +28,7 @@ export class DirtyRegionTracker {
             return
         }
 
-        const offset = 5 + (count * 4);
+        const offset = CTRL_DIRTY_REGIONS + (count * 4);
         this.control[offset + 0] = x | 0;  // Ensure u32
         this.control[offset + 1] = y | 0;
         this.control[offset + 2] = w | 0;
